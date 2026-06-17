@@ -1,0 +1,13 @@
+<?php
+
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+
+Artisan::command('inspire', function () {
+    /** @phpstan-ignore-next-line */
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');
+
+Schedule::command('copilot:send-daily-digest')->hourly();
+Schedule::command('copilot:scrape-sources')->hourly();

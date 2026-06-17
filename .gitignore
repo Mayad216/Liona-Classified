@@ -1,0 +1,18 @@
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.local
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies (all packages)
+**/node_modules/
+
+# Build output
+frontend/dist/
+backend/public/build/
+backend/public/hot/
