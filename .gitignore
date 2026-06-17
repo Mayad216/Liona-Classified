@@ -16,3 +16,6 @@ Thumbs.db
 frontend/dist/
 backend/public/build/
 backend/public/hot/
+
+# Accidental nested clone of this repo
+Liona-Classified/
