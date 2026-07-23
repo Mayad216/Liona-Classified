@@ -78,11 +78,6 @@ if [[ -n "${DB_HOST:-}" ]]; then
   ) &
 fi
 
-ROUTER="vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php"
-if [[ ! -f "${ROUTER}" ]]; then
-  log "ERROR: Laravel server router missing — vendor may not be installed."
-  exit 1
-fi
-
 log "Starting web server on [::]:${PORT} ..."
-exec php -S "[::]:${PORT}" -t public "${ROUTER}"
+cd public || exit 1
+exec php -S "[::]:${PORT}" ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
