@@ -76,13 +76,13 @@ if ($services.Count -eq 0) {
 }
 
 if (-not $BackendService) {
-  $BackendService = Pick-Service $services @("backend", "api", "liona-classified") "Select the BACKEND (Laravel API) service:"
+  $BackendService = Pick-Service $services @("backend", "api", "liona-classified") 'Select the BACKEND (Laravel API) service:'
 }
 if (-not $FrontendService) {
-  $FrontendService = Pick-Service $services @("frontend", "web", "liona") "Select the FRONTEND (React) service:"
+  $FrontendService = Pick-Service $services @("frontend", "web", "liona") 'Select the FRONTEND (React) service:'
 }
 if (-not $MySqlService) {
-  $dbServices = $services | Where-Object { $_.name -match "mysql|postgres|mariadb|database" -or $_.serviceType -eq "database" }
+  $dbServices = $services | Where-Object { $_.name -match 'mysql|postgres|mariadb|database' -or $_.serviceType -eq 'database' }
   if ($dbServices.Count -eq 1) {
     $MySqlService = $dbServices[0].name
   } elseif ($dbServices.Count -gt 1) {
@@ -116,6 +116,11 @@ $apiUrl = "https://$backendHost/api/v1"
 $appKey = New-AppKey
 
 Write-Host ""
+function Get-MySqlVarRef {
+  param([string]$Field)
+  return '$' + '{{' + $MySqlService + '.' + $Field + '}}'
+}
+
 Write-Host "Configuring backend service: $BackendService" -ForegroundColor Green
 $backendVars = @{
   "APP_KEY" = $appKey
@@ -126,11 +131,11 @@ $backendVars = @{
   "FRONTEND_PUBLIC_DOMAIN" = $frontendHost
   "SANCTUM_STATEFUL_DOMAINS" = $frontendHost
   "DB_CONNECTION" = "mysql"
-  "DB_HOST" = ('${{' + $MySqlService + '.MYSQLHOST}}')
-  "DB_PORT" = ('${{' + $MySqlService + '.MYSQLPORT}}')
-  "DB_DATABASE" = ('${{' + $MySqlService + '.MYSQLDATABASE}}')
-  "DB_USERNAME" = ('${{' + $MySqlService + '.MYSQLUSER}}')
-  "DB_PASSWORD" = ('${{' + $MySqlService + '.MYSQLPASSWORD}}')
+  "DB_HOST" = Get-MySqlVarRef "MYSQLHOST"
+  "DB_PORT" = Get-MySqlVarRef "MYSQLPORT"
+  "DB_DATABASE" = Get-MySqlVarRef "MYSQLDATABASE"
+  "DB_USERNAME" = Get-MySqlVarRef "MYSQLUSER"
+  "DB_PASSWORD" = Get-MySqlVarRef "MYSQLPASSWORD"
 }
 foreach ($entry in $backendVars.GetEnumerator()) {
   Invoke-Railway @("variable", "set", "$($entry.Key)=$($entry.Value)", "--service", $BackendService, "--skip-deploys") | Out-Null
