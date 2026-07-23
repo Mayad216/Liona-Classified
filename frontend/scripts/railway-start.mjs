@@ -12,8 +12,20 @@ if (!apiUrl && process.env.BACKEND_PUBLIC_DOMAIN) {
 }
 
 if (apiUrl) {
-  writeFileSync(join(distDir, "config.json"), JSON.stringify({ apiUrl }));
+  const configPath = join(distDir, "config.json");
+  writeFileSync(configPath, JSON.stringify({ apiUrl }));
   console.log(`[railway-start] config.json -> ${apiUrl}`);
+
+  const indexPath = join(distDir, "index.html");
+  if (existsSync(indexPath)) {
+    let html = readFileSync(indexPath, "utf8");
+    const inject = `<script>window.__KHaleej_API__=${JSON.stringify(apiUrl)}</script>`;
+    if (!html.includes("__KHaleej_API__")) {
+      html = html.replace("<head>", `<head>${inject}`);
+      writeFileSync(indexPath, html);
+      console.log("[railway-start] Injected API URL into index.html");
+    }
+  }
 } else {
   console.log("[railway-start] WARNING: Set VITE_API_URL or BACKEND_PUBLIC_DOMAIN");
 }

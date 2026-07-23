@@ -1,4 +1,5 @@
 import { isLiveApi } from "@/lib/apiMode";
+import { getApiBaseUrl } from "@/lib/apiConfig";
 
 export function CatalogStatus({
   loading,
@@ -35,7 +36,10 @@ export function CatalogStatus({
 export function LiveApiBadge() {
   if (!isLiveApi()) return null;
   return (
-    <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 sm:inline">
+    <span
+      className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 sm:inline"
+      title={`API: ${getApiBaseUrl()}`}
+    >
       Live API
     </span>
   );

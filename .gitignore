@@ -8,6 +8,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!frontend/.env.production
 
 # Dependencies (all packages)
 **/node_modules/
