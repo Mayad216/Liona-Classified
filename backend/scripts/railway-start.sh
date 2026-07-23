@@ -19,20 +19,62 @@ if [[ -z "${APP_KEY:-}" ]]; then
   fi
 fi
 
+if [[ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ]]; then
+  export APP_URL="${APP_URL:-https://${RAILWAY_PUBLIC_DOMAIN}}"
+fi
+
+if [[ -n "${FRONTEND_PUBLIC_DOMAIN:-}" ]]; then
+  export FRONTEND_URL="${FRONTEND_URL:-https://${FRONTEND_PUBLIC_DOMAIN}}"
+fi
+
+if [[ -z "${SANCTUM_STATEFUL_DOMAINS:-}" && -n "${FRONTEND_PUBLIC_DOMAIN:-}" ]]; then
+  export SANCTUM_STATEFUL_DOMAINS="${FRONTEND_PUBLIC_DOMAIN}"
+elif [[ -z "${SANCTUM_STATEFUL_DOMAINS:-}" && -n "${FRONTEND_URL:-}" ]]; then
+  export SANCTUM_STATEFUL_DOMAINS="$(echo "${FRONTEND_URL}" | sed -E 's#^https?://##; s#/.*##')"
+fi
+
+export APP_ENV="${APP_ENV:-staging}"
+export APP_DEBUG="${APP_DEBUG:-false}"
+
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache 2>/dev/null || chmod -R 777 storage bootstrap/cache 2>/dev/null || true
 
 log "PHP: $(php -r 'echo PHP_VERSION;')"
-log "PWD: $(pwd)"
+log "APP_URL: ${APP_URL:-unset}"
+log "FRONTEND_URL: ${FRONTEND_URL:-unset}"
 log "PORT: ${PORT}"
 
 php artisan config:clear >/dev/null 2>&1 || log "config:clear skipped"
+
+database_ready() {
+  php -r "
+    require 'vendor/autoload.php';
+    \$app = require 'bootstrap/app.php';
+    \$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+    if (!Illuminate\Support\Facades\Schema::hasTable('users')) {
+      echo 'empty';
+      exit(0);
+    }
+    echo Illuminate\Support\Facades\DB::table('users')->exists() ? 'seeded' : 'empty';
+  " 2>/dev/null || echo "unknown"
+}
 
 if [[ -n "${DB_HOST:-}" ]]; then
   (
     sleep 2
     log "Running migrations..."
-    php artisan migrate --force --no-interaction || log "WARNING: migrations failed (server still starting)"
+    if php artisan migrate --force --no-interaction; then
+      log "Migrations complete."
+      state="$(database_ready)"
+      if [[ "${state}" == "empty" ]]; then
+        log "Seeding database (first run)..."
+        php artisan db:seed --force --no-interaction && log "Seed complete." || log "WARNING: seed failed"
+      else
+        log "Database already seeded (${state})."
+      fi
+    else
+      log "WARNING: migrations failed (server still starting)"
+    fi
   ) &
 fi
 
@@ -42,6 +84,5 @@ if [[ ! -f "${ROUTER}" ]]; then
   exit 1
 fi
 
-# Railway's healthcheck prober may use IPv6; binding only 0.0.0.0 leaves nothing listening on [::].
 log "Starting web server on [::]:${PORT} ..."
 exec php -S "[::]:${PORT}" -t public "${ROUTER}"

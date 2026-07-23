@@ -3,11 +3,9 @@
  * Falls back gracefully to mock data if the API isn't reachable so the
  * SPA is always demoable.
  */
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+import { getApiBaseUrl } from "@/lib/apiConfig";
 
-export function getApiBaseUrl() {
-  return BASE_URL;
-}
+export { getApiBaseUrl, loadApiConfig } from "@/lib/apiConfig";
 
 /** Stored by auth flows; RSVP and topic creation send this as Bearer token. */
 export const AUTH_TOKEN_KEY = "khaleej:auth_token";
@@ -38,7 +36,7 @@ type RequestOptions = RequestInit & { token?: string };
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { token, headers, ...rest } = opts;
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
@@ -362,7 +360,7 @@ export const api = {
     form.append("file", file);
     if (title) form.append("title", title);
 
-    const res = await fetch(`${BASE_URL}/copilot/resumes/upload`, {
+    const res = await fetch(`${getApiBaseUrl()}/copilot/resumes/upload`, {
       method: "POST",
       headers: {
         Accept: "application/json",

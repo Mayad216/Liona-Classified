@@ -1,5 +1,6 @@
 import type { Emirate } from "@/types";
 import { api } from "@/lib/api";
+import { getApiBaseUrl } from "@/lib/apiConfig";
 import bundledLocations from "@/data/uae-locations-bundled.json";
 
 /** All UAE emirates — used for roommate location matching and search filters. */
@@ -108,7 +109,7 @@ async function fetchAreasFromApi(timeoutMs = 4000): Promise<Record<string, strin
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1"}/uae/locations`, {
+    const res = await fetch(`${getApiBaseUrl()}/uae/locations`, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
     });
