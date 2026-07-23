@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, AUTH_TOKEN_KEY, ApiError } from "@/lib/api";
+import { isLiveApi } from "@/lib/apiMode";
 import type { User } from "@/types";
 
 export const AUTH_USER_KEY = "khaleej:auth_user";
@@ -144,7 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       persistSession(apiUser, res.token);
       setUser(apiUser);
       return;
-    } catch {
+    } catch (err) {
+      if (isLiveApi()) {
+        throw err instanceof ApiError ? err : new ApiError(401, "Invalid email or password");
+      }
       const demo = DEMO_ACCOUNTS[normalized];
       if (demo && demo.password === password) {
         const token = `demo-${demo.user.id}-${Date.now()}`;
@@ -179,7 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         persistSession(apiUser, res.token);
         setUser(apiUser);
-      } catch {
+      } catch (err) {
+        if (isLiveApi()) {
+          throw err instanceof ApiError ? err : new ApiError(422, "Registration failed");
+        }
         const newUser: AuthUser = {
           id: `u-${Date.now()}`,
           name: payload.name,

@@ -32,7 +32,7 @@ import { JobCard } from "@/components/JobCard";
 import { ServiceCard } from "@/components/ServiceCard";
 import { MobileAppSection } from "@/components/MobileAppSection";
 import { HeroHeadlineCollage } from "@/components/HeroHeadlineCollage";
-import { mockListings, mockJobs, mockServices } from "@/data/mock";
+import { useListings, useJobs, useServices } from "@/lib/catalog/useCatalog";
 import {
   HOME_SERVICE_CATEGORIES,
   STANDALONE_SERVICE_CATEGORIES,
@@ -420,6 +420,7 @@ function SectionHeader({
 }
 
 function FeaturedListings() {
+  const { items: listings } = useListings();
   return (
     <section className="container mt-24">
       <SectionHeader
@@ -429,7 +430,7 @@ function FeaturedListings() {
         ctaTo="/accommodation"
       />
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {mockListings.slice(0, 4).map((l) => (
+        {listings.slice(0, 4).map((l) => (
           <ListingCard key={l.id} listing={l} />
         ))}
       </div>
@@ -504,6 +505,7 @@ function StatsBand() {
 }
 
 function TopJobs() {
+  const { items: jobs } = useJobs();
   return (
     <section className="container mt-24">
       <SectionHeader
@@ -513,7 +515,7 @@ function TopJobs() {
         ctaTo="/jobs"
       />
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {mockJobs.slice(0, 3).map((j) => (
+        {jobs.slice(0, 3).map((j) => (
           <JobCard key={j.id} job={j} />
         ))}
       </div>
@@ -522,11 +524,12 @@ function TopJobs() {
 }
 
 function PopularServices() {
+  const { items: services } = useServices();
   const topCategories = HOME_SERVICE_CATEGORIES.filter((c) => c.popular);
-  const featured = featuredServices(mockServices, 4, { homeServicesOnly: true });
+  const featured = featuredServices(services, 4, { homeServicesOnly: true });
   const startingPrices = useMemo(
-    () => categoryStartingPrices(mockServices, HOME_SERVICE_CATEGORIES),
-    []
+    () => categoryStartingPrices(services, HOME_SERVICE_CATEGORIES),
+    [services]
   );
 
   return (
@@ -584,9 +587,10 @@ function PopularServices() {
 }
 
 function StandaloneServices() {
+  const { items: services } = useServices();
   const startingPrices = useMemo(
-    () => categoryStartingPrices(mockServices, STANDALONE_SERVICE_CATEGORIES),
-    []
+    () => categoryStartingPrices(services, STANDALONE_SERVICE_CATEGORIES),
+    [services]
   );
 
   return (

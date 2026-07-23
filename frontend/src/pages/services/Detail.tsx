@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { mockServices } from "@/data/mock";
+import { useService, useServices } from "@/lib/catalog/useCatalog";
+import type { Service } from "@/types";
 import {
   SERVICE_BOOKING_SLOTS,
   SERVICE_HIGHLIGHTS,
@@ -30,12 +31,17 @@ export function ServiceDetail() {
   const { id } = useParams();
   const location = useLocation();
   const serviceId = id ? decodeURIComponent(id) : undefined;
-  const service = mockServices.find((s) => s.id === serviceId);
+  const { service, loading, error, live } = useService(serviceId);
+
+  if (loading) {
+    return <div className="container py-20 text-center text-slate-600">Loading service…</div>;
+  }
 
   if (!service) {
     return (
       <div className="container py-20 text-center">
         <h1 className="text-2xl font-bold">Service not found</h1>
+        {live && error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         <Link to="/services" className="mt-4 inline-block text-brand-600 underline">
           Back to services
         </Link>
@@ -46,7 +52,7 @@ export function ServiceDetail() {
   return <ServiceDetailContent service={service} fromPath={location.pathname} />;
 }
 
-function serviceListBack(pathname: string, service: (typeof mockServices)[number]) {
+function serviceListBack(pathname: string, service: Service) {
   if (pathname.startsWith("/tutoring")) {
     return { to: "/tutoring", label: "Back to tutors" };
   }
@@ -72,9 +78,10 @@ function ServiceDetailContent({
   service,
   fromPath,
 }: {
-  service: (typeof mockServices)[number];
+  service: Service;
   fromPath: string;
 }) {
+  const { items: allServices } = useServices();
   const [slotId, setSlotId] = useState<string>(SERVICE_BOOKING_SLOTS[0].id);
   const [booked, setBooked] = useState(false);
   const { stats: reviewStats } = useServiceReviews(
@@ -88,10 +95,10 @@ function ServiceDetailContent({
   const isMeal = service.category === "Homemade Meals";
   const isPest = service.category === "Pest Control";
   const { to: backTo, label: backLabel } = serviceListBack(fromPath, service);
-  const similar = mockServices
+  const similar = allServices
     .filter((s) => s.id !== service.id && s.category === service.category)
     .slice(0, 3);
-  const fallbackSimilar = mockServices.filter((s) => s.id !== service.id).slice(0, 3);
+  const fallbackSimilar = allServices.filter((s) => s.id !== service.id).slice(0, 3);
   const related = similar.length >= 2 ? similar : fallbackSimilar;
 
   const selectedSlot =

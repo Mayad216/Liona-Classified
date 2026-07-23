@@ -4,10 +4,12 @@ import { SlidersHorizontal, X, Search, MapPin, LayoutGrid, Map as MapIcon, Users
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { ListingCard } from "@/components/ListingCard";
+import { CatalogStatus } from "@/components/CatalogStatus";
 import { MapView } from "@/components/MapView";
 import { SaveSearchButton } from "@/components/SaveSearchButton";
 import { LocationSelectField } from "@/components/match/LocationSelectField";
 import { mockListings } from "@/data/mock";
+import { useListings } from "@/lib/catalog/useCatalog";
 import {
   formatLocationPreference,
   listingMatchesAnyLocation,
@@ -64,13 +66,14 @@ const defaultFilters: Filters = {
 
 export function AccommodationList() {
   const location = useLocation();
+  const { items: listings, loading, error, live } = useListings();
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [drawer, setDrawer] = useState(false);
   const [sort, setSort] = useState("recommended");
   const [view, setView] = useState<"grid" | "map">("grid");
 
   const filtered = useMemo(() => {
-    let r = mockListings.filter((l) => {
+    let r = listings.filter((l) => {
       if (
         filters.q &&
         ![l.title, l.area, l.emirate, l.description]
@@ -99,7 +102,7 @@ export function AccommodationList() {
       r = [...r].sort((a, b) => +new Date(b.postedAt) - +new Date(a.postedAt));
     else r = [...r].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
     return r;
-  }, [filters, sort]);
+  }, [filters, sort, listings]);
 
   const activeChips = useMemo(() => {
     const chips: { label: string; clear: () => void }[] = [];
@@ -165,6 +168,12 @@ export function AccommodationList() {
           <p className="mt-2 text-slate-600">
             {filtered.length} verified listings · Updated minutes ago
           </p>
+          <CatalogStatus
+            loading={loading}
+            error={error}
+            live={live}
+            emptyLabel="Post the first listing from Post Ad."
+          />
           <Link
             to="/community/areas"
             className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-800 hover:bg-brand-100"

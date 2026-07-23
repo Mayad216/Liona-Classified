@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api";
+import { isLiveApi } from "@/lib/apiMode";
 import { useAuth } from "@/lib/auth";
 
 function formatAuthError(err: unknown): string {
@@ -124,44 +125,62 @@ export function Login() {
           </div>
 
           <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Demo accounts (password: password)
-            </p>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  demoLogin("lister");
-                  navigate("/dashboard");
-                }}
-              >
-                Lister
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  demoLogin("seeker");
-                  navigate("/dashboard");
-                }}
-              >
-                Seeker
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  demoLogin("admin");
-                  navigate("/admin");
-                }}
-              >
-                Admin
-              </Button>
-            </div>
+            {isLiveApi() ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Staging accounts (real API · password: password)
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-slate-700">
+                  <li>
+                    <strong>admin@khaleej.ae</strong> — admin panel
+                  </li>
+                  <li>
+                    <strong>aisha@khaleej.ae</strong> — lister dashboard
+                  </li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Demo accounts (password: password)
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      demoLogin("lister");
+                      navigate("/dashboard");
+                    }}
+                  >
+                    Lister
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      demoLogin("seeker");
+                      navigate("/dashboard");
+                    }}
+                  >
+                    Seeker
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      demoLogin("admin");
+                      navigate("/admin");
+                    }}
+                  >
+                    Admin
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

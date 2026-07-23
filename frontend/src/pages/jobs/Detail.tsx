@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { JobCard } from "@/components/JobCard";
-import { mockJobs } from "@/data/mock";
+import { useJob, useJobs } from "@/lib/catalog/useCatalog";
 import { formatPrice, relativeTime } from "@/lib/utils";
 import { ApplyWithResumeModal } from "@/components/resume/ApplyWithResumeModal";
 import {
@@ -32,15 +32,21 @@ import { createResume, listResumes } from "@/lib/resume/useResume";
 export function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const job = mockJobs.find((j) => j.id === id);
+  const { job, loading, error, live } = useJob(id);
+  const { items: allJobs } = useJobs();
   const [applied, setApplied] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
   const [tailoring, setTailoring] = useState(false);
+
+  if (loading) {
+    return <div className="container py-20 text-center text-slate-600">Loading job…</div>;
+  }
 
   if (!job) {
     return (
       <div className="container py-20 text-center">
         <h1 className="text-2xl font-bold">Job not found</h1>
+        {live && error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         <Link to="/jobs" className="mt-4 inline-block text-brand-600 underline">
           Back to jobs
         </Link>
@@ -48,7 +54,7 @@ export function JobDetail() {
     );
   }
 
-  const similar = mockJobs.filter((j) => j.id !== job.id).slice(0, 3);
+  const similar = allJobs.filter((j) => j.id !== job.id).slice(0, 3);
   const employer = getEmployerProfile(job.employerId);
   const applicationMethod = job.applicationMethod ?? "platform";
   const isPlatformApply = applicationMethod === "platform";

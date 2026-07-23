@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { ServiceCard } from "@/components/ServiceCard";
 import { Button } from "@/components/ui/Button";
-import { mockServices } from "@/data/mock";
+import { useServices } from "@/lib/catalog/useCatalog";
+import { CatalogStatus } from "@/components/CatalogStatus";
 import {
   HOME_SERVICE_CATEGORIES,
   SERVICE_EMIRATES,
@@ -55,6 +56,7 @@ export function ServicesList({
   const isTutoringPage = variant === "tutoring";
   const isMealsPage = variant === "meals";
   const isSpecialtyPage = isMoversPage || isTutoringPage || isMealsPage;
+  const { items: services, loading, error, live } = useServices();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
@@ -78,7 +80,7 @@ export function ServicesList({
   }, [isSpecialtyPage, navigate, searchParams]);
 
   const filtered = useMemo(() => {
-    const base = isSpecialtyPage ? mockServices : homeServicesOnly(mockServices);
+    const base = isSpecialtyPage ? services : homeServicesOnly(services);
     return filterServices(base, {
       category: active,
       emirate,
@@ -86,15 +88,15 @@ export function ServicesList({
       language: isTutoringPage ? language : undefined,
       cuisine: isMealsPage ? cuisine : undefined,
     });
-  }, [active, emirate, q, language, cuisine, isTutoringPage, isMealsPage, isSpecialtyPage]);
+  }, [active, emirate, q, language, cuisine, isTutoringPage, isMealsPage, isSpecialtyPage, services]);
 
   const startingPrices = useMemo(
     () =>
       categoryStartingPrices(
-        mockServices,
+        services,
         isSpecialtyPage ? undefined : HOME_SERVICE_CATEGORIES
       ),
-    [isSpecialtyPage]
+    [isSpecialtyPage, services]
   );
 
   const popularCategories = HOME_SERVICE_CATEGORIES.filter((c) => c.popular);

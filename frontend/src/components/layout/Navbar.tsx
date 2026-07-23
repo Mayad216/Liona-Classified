@@ -28,6 +28,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LiveApiBadge } from "@/components/CatalogStatus";
 import { cn } from "@/lib/utils";
 
 function isServicesHomeActive(pathname: string) {
@@ -267,7 +268,10 @@ export function Navbar() {
             <span className="text-lg font-black">K</span>
           </div>
           <div className="hidden sm:block">
-            <div className="text-base font-bold leading-none tracking-tight">Khaleej</div>
+            <div className="flex items-center gap-2">
+              <div className="text-base font-bold leading-none tracking-tight">Khaleej</div>
+              <LiveApiBadge />
+            </div>
             <div className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-slate-500">
               UAE Classifieds
             </div>

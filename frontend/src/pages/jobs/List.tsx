@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { JobCard } from "@/components/JobCard";
-import { mockJobs } from "@/data/mock";
+import { useJobs } from "@/lib/catalog/useCatalog";
+import { CatalogStatus } from "@/components/CatalogStatus";
 import type { EmploymentType, ExperienceLevel } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const EMPLOYMENT: EmploymentType[] = [
 const EXPERIENCE: ExperienceLevel[] = ["Entry", "Mid", "Senior", "Lead", "Executive"];
 
 export function JobsList() {
+  const { items: jobs, loading, error, live } = useJobs();
   const [q, setQ] = useState("");
   const [emirate, setEmirate] = useState("");
   const [industry, setIndustry] = useState("");
@@ -28,7 +30,7 @@ export function JobsList() {
   const [minSalary, setMinSalary] = useState(0);
 
   const filtered = useMemo(() => {
-    return mockJobs.filter((j) => {
+    return jobs.filter((j) => {
       if (q && !`${j.title} ${j.company} ${j.industry}`.toLowerCase().includes(q.toLowerCase()))
         return false;
       if (emirate && j.emirate !== emirate) return false;
@@ -39,9 +41,9 @@ export function JobsList() {
       if (j.salaryMax > 0 && j.salaryMax < minSalary) return false;
       return true;
     });
-  }, [q, emirate, industry, employment, experience, remoteOnly, minSalary]);
+  }, [q, emirate, industry, employment, experience, remoteOnly, minSalary, jobs]);
 
-  const industries = Array.from(new Set(mockJobs.map((j) => j.industry)));
+  const industries = Array.from(new Set(jobs.map((j) => j.industry)));
 
   return (
     <div className="bg-slate-50/60 pb-20 pt-8">
@@ -52,6 +54,7 @@ export function JobsList() {
             <p className="mt-2 text-slate-600">
               {filtered.length} open roles · AI-matched to your profile
             </p>
+            <CatalogStatus loading={loading} error={error} live={live} />
           </div>
           <Link to="/post?mode=job">
             <Button variant="outline">

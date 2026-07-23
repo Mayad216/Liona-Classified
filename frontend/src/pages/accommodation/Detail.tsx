@@ -27,7 +27,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { mockListings } from "@/data/mock";
+import { useListing, useListings } from "@/lib/catalog/useCatalog";
 import { formatPrice, relativeTime, cn } from "@/lib/utils";
 import { ListingCard } from "@/components/ListingCard";
 import { TrustScore } from "@/components/TrustScore";
@@ -37,17 +37,27 @@ import { AreaInsightBanner } from "@/components/area/AreaInsightBanner";
 
 export function AccommodationDetail() {
   const { id } = useParams();
-  const listing = mockListings.find((l) => l.id === id);
+  const { listing, loading, error, live } = useListing(id);
+  const { items: allListings } = useListings();
   const [photoIdx, setPhotoIdx] = useState(0);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const wishlist = useWishlist();
   const compare = useCompare();
 
+  if (loading) {
+    return (
+      <div className="container py-20 text-center text-slate-600">Loading listing…</div>
+    );
+  }
+
   if (!listing) {
     return (
       <div className="container py-20 text-center">
         <h1 className="text-2xl font-bold">Listing not found</h1>
+        {live && error ? (
+          <p className="mt-2 text-sm text-red-600">{error}</p>
+        ) : null}
         <Link to="/accommodation" className="mt-4 inline-block text-brand-600 underline">
           Back to listings
         </Link>
@@ -55,7 +65,7 @@ export function AccommodationDetail() {
     );
   }
 
-  const similar = mockListings.filter((l) => l.id !== listing.id).slice(0, 3);
+  const similar = allListings.filter((l) => l.id !== listing.id).slice(0, 3);
   const liked = wishlist.has(listing.id);
   const comparing = compare.has(listing.id);
   const titleDeedVerified = listing.host.verified && listing.listedBy === "Landlord";
