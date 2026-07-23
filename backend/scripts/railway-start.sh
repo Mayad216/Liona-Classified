@@ -6,11 +6,15 @@ log() {
   echo "[railway-start] $*"
 }
 
+on_railway() {
+  [[ -n "${RAILWAY_PROJECT_ID:-}${RAILWAY_ENVIRONMENT_NAME:-}${RAILWAY_ENVIRONMENT:-}" ]]
+}
+
 PORT="${PORT:-8080}"
 export PORT
 
 if [[ -z "${APP_KEY:-}" ]]; then
-  if [[ -n "${RAILWAY_PROJECT_ID:-}${RAILWAY_ENVIRONMENT_NAME:-}${RAILWAY_ENVIRONMENT:-}" ]]; then
+  if on_railway; then
     export APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
     log "Generated APP_KEY for Railway (set APP_KEY in Variables for a stable key)."
   else
@@ -39,11 +43,17 @@ export SESSION_DRIVER="${SESSION_DRIVER:-file}"
 export CACHE_STORE="${CACHE_STORE:-file}"
 export QUEUE_CONNECTION="${QUEUE_CONNECTION:-sync}"
 
-if [[ -n "${MYSQL_URL:-}" && -z "${DB_URL:-}" ]]; then
-  export DB_URL="${MYSQL_URL}"
-fi
+# Normalize Railway / plugin MySQL variable names.
+[[ -n "${MYSQL_URL:-}" && -z "${DB_URL:-}" ]] && export DB_URL="${MYSQL_URL}"
+[[ -n "${MYSQLHOST:-}" && -z "${DB_HOST:-}" ]] && export DB_HOST="${MYSQLHOST}"
+[[ -n "${MYSQLPORT:-}" && -z "${DB_PORT:-}" ]] && export DB_PORT="${MYSQLPORT}"
+[[ -n "${MYSQLDATABASE:-}" && -z "${DB_DATABASE:-}" ]] && export DB_DATABASE="${MYSQLDATABASE}"
+[[ -n "${MYSQLUSER:-}" && -z "${DB_USERNAME:-}" ]] && export DB_USERNAME="${MYSQLUSER}"
+[[ -n "${MYSQLPASSWORD:-}" && -z "${DB_PASSWORD:-}" ]] && export DB_PASSWORD="${MYSQLPASSWORD}"
 
-if [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
+if on_railway; then
+  export DB_CONNECTION=mysql
+elif [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
   export DB_CONNECTION="${DB_CONNECTION:-mysql}"
 fi
 
@@ -55,6 +65,8 @@ log "APP_URL: ${APP_URL:-unset}"
 log "FRONTEND_URL: ${FRONTEND_URL:-unset}"
 log "DB_CONNECTION: ${DB_CONNECTION:-unset}"
 log "DB_HOST: ${DB_HOST:-unset}"
+log "DB_DATABASE: ${DB_DATABASE:-unset}"
+log "DB_URL set: $( [[ -n "${DB_URL:-}" ]] && echo yes || echo no )"
 log "SESSION_DRIVER: ${SESSION_DRIVER}"
 log "PORT: ${PORT}"
 
@@ -75,7 +87,7 @@ database_ready() {
 
 if [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
   log "Waiting for database..."
-  sleep 3
+  sleep 5
   log "Running migrations..."
   if php artisan migrate --force --no-interaction; then
     log "Migrations complete."
@@ -87,10 +99,18 @@ if [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
       log "Database already seeded (${state})."
     fi
   else
-    log "WARNING: migrations failed — check MySQL variables (use \${{MySQL.MYSQLHOST}} etc.)"
+    log "ERROR: migrations failed — verify MySQL service is linked to this backend service."
   fi
-else
-  log "WARNING: No DB_HOST/DB_URL — API routes needing MySQL will fail until MySQL is linked."
+elif on_railway; then
+  log "ERROR: No MySQL configured. Add these backend Variables (use Railway reference picker):"
+  log "  DB_CONNECTION=mysql"
+  log "  DB_HOST=\${{MySQL.MYSQLHOST}}"
+  log "  DB_PORT=\${{MySQL.MYSQLPORT}}"
+  log "  DB_DATABASE=\${{MySQL.MYSQLDATABASE}}"
+  log "  DB_USERNAME=\${{MySQL.MYSQLUSER}}"
+  log "  DB_PASSWORD=\${{MySQL.MYSQLPASSWORD}}"
+  log "Or set DB_URL=\${{MySQL.MYSQL_URL}}"
+  log "Without MySQL, the API uses SQLite and tables like listings do not exist."
 fi
 
 log "Starting web server on [::]:${PORT} ..."

@@ -23,9 +23,14 @@ export function CatalogStatus({
   }
 
   if (error) {
+    const message =
+      error.length > 180
+        ? `${error.slice(0, 180).trim()}…`
+        : error;
     return (
       <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
-        Could not load live data: {error}. Check backend CORS and `VITE_API_URL` / `config.json`.
+        Could not load live data: {message}. If you see SQLite or &quot;no such table&quot;, link MySQL on
+        the backend service and redeploy.
       </p>
     );
   }
