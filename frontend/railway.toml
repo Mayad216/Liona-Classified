@@ -2,7 +2,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "npm ci && npm run build:staging"
+buildCommand = "npm run build:staging"
 
 [deploy]
 startCommand = "node scripts/railway-start.mjs"
