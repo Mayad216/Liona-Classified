@@ -6,6 +6,7 @@ NIXPACKS_PHP_ROOT_DIR = "/app/public"
 [phases.setup]
 nixPkgs = [
   "php82",
+  "php82Packages.composer",
   "php82Extensions.bcmath",
   "php82Extensions.curl",
   "php82Extensions.fileinfo",
