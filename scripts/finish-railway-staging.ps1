@@ -125,12 +125,15 @@ Write-Host "Configuring backend service: $BackendService" -ForegroundColor Green
 $backendVars = @{
   "APP_KEY" = $appKey
   "APP_ENV" = "staging"
-  "APP_DEBUG" = "false"
+  "APP_DEBUG" = "true"
   "APP_URL" = "https://$backendHost"
   "FRONTEND_URL" = "https://$frontendHost"
   "FRONTEND_PUBLIC_DOMAIN" = $frontendHost
   "SANCTUM_STATEFUL_DOMAINS" = $frontendHost
+  "SESSION_DRIVER" = "file"
+  "CACHE_STORE" = "file"
   "DB_CONNECTION" = "mysql"
+  "DB_URL" = Get-MySqlVarRef "MYSQL_URL"
   "DB_HOST" = Get-MySqlVarRef "MYSQLHOST"
   "DB_PORT" = Get-MySqlVarRef "MYSQLPORT"
   "DB_DATABASE" = Get-MySqlVarRef "MYSQLDATABASE"

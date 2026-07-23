@@ -34,7 +34,18 @@ elif [[ -z "${SANCTUM_STATEFUL_DOMAINS:-}" && -n "${FRONTEND_URL:-}" ]]; then
 fi
 
 export APP_ENV="${APP_ENV:-staging}"
-export APP_DEBUG="${APP_DEBUG:-false}"
+export APP_DEBUG="${APP_DEBUG:-true}"
+export SESSION_DRIVER="${SESSION_DRIVER:-file}"
+export CACHE_STORE="${CACHE_STORE:-file}"
+export QUEUE_CONNECTION="${QUEUE_CONNECTION:-sync}"
+
+if [[ -n "${MYSQL_URL:-}" && -z "${DB_URL:-}" ]]; then
+  export DB_URL="${MYSQL_URL}"
+fi
+
+if [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
+  export DB_CONNECTION="${DB_CONNECTION:-mysql}"
+fi
 
 mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache 2>/dev/null || chmod -R 777 storage bootstrap/cache 2>/dev/null || true
@@ -42,6 +53,9 @@ chmod -R ug+rwx storage bootstrap/cache 2>/dev/null || chmod -R 777 storage boot
 log "PHP: $(php -r 'echo PHP_VERSION;')"
 log "APP_URL: ${APP_URL:-unset}"
 log "FRONTEND_URL: ${FRONTEND_URL:-unset}"
+log "DB_CONNECTION: ${DB_CONNECTION:-unset}"
+log "DB_HOST: ${DB_HOST:-unset}"
+log "SESSION_DRIVER: ${SESSION_DRIVER}"
 log "PORT: ${PORT}"
 
 php artisan config:clear >/dev/null 2>&1 || log "config:clear skipped"
@@ -59,23 +73,24 @@ database_ready() {
   " 2>/dev/null || echo "unknown"
 }
 
-if [[ -n "${DB_HOST:-}" ]]; then
-  (
-    sleep 2
-    log "Running migrations..."
-    if php artisan migrate --force --no-interaction; then
-      log "Migrations complete."
-      state="$(database_ready)"
-      if [[ "${state}" == "empty" ]]; then
-        log "Seeding database (first run)..."
-        php artisan db:seed --force --no-interaction && log "Seed complete." || log "WARNING: seed failed"
-      else
-        log "Database already seeded (${state})."
-      fi
+if [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
+  log "Waiting for database..."
+  sleep 3
+  log "Running migrations..."
+  if php artisan migrate --force --no-interaction; then
+    log "Migrations complete."
+    state="$(database_ready)"
+    if [[ "${state}" == "empty" ]]; then
+      log "Seeding database (first run)..."
+      php artisan db:seed --force --no-interaction && log "Seed complete." || log "WARNING: seed failed"
     else
-      log "WARNING: migrations failed (server still starting)"
+      log "Database already seeded (${state})."
     fi
-  ) &
+  else
+    log "WARNING: migrations failed — check MySQL variables (use \${{MySQL.MYSQLHOST}} etc.)"
+  fi
+else
+  log "WARNING: No DB_HOST/DB_URL — API routes needing MySQL will fail until MySQL is linked."
 fi
 
 log "Starting web server on [::]:${PORT} ..."
