@@ -1,0 +1,11 @@
+# Railway service: Settings → Root Directory = backend
+
+[build]
+builder = "NIXPACKS"
+nixpacksConfigPath = "nixpacks.toml"
+
+[deploy]
+healthcheckPath = "/up"
+healthcheckTimeout = 180
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

@@ -13,6 +13,7 @@ Built from the *UAE Classifieds — Silicon Valley Level* product spec.
 ```
 uae-classifieds/
 ├── frontend/   # React 18 + Vite + TypeScript + Tailwind  (RUNNING)
+├── mobile/     # Expo + React Native Android app           (NEW)
 └── backend/    # Laravel 11 REST API + Sanctum + SQLite/MySQL  (READY)
 ```
 
@@ -70,6 +71,38 @@ Open <http://localhost:5173>.
 | `npm run lint`   | TypeScript-only project type-check         |
 
 The app ships with **rich mock data**, so every page (home, accommodation, jobs, services, dashboard, admin) works without the backend.
+
+---
+
+## Mobile (Expo — Android)
+
+Native Android app scaffold in `mobile/` using **Expo SDK 56 + TypeScript + Expo Router**.
+
+### Prerequisites
+
+| Tool | Install |
+| ---- | ------- |
+| JDK 17 | `winget install Microsoft.OpenJDK.17` |
+| Android Studio | `winget install Google.AndroidStudio` |
+| Android SDK | API 34 + Platform-Tools via SDK Manager |
+
+Check your setup:
+
+```powershell
+.\scripts\setup-android-env.ps1
+```
+
+### Run
+
+```powershell
+cd mobile
+Copy-Item .env.example .env
+$env:NODE_OPTIONS = "--use-system-ca"
+npm install
+npm run android
+```
+
+See **`mobile/README.md`** for emulator vs physical device API URLs, EAS builds, and troubleshooting.
 
 ---
 

@@ -36,10 +36,10 @@ export function MatchHome() {
 
         <div className="mt-12 grid w-full max-w-4xl gap-5 sm:grid-cols-2">
           <MatchOptionCard
-            to="/post?mode=accommodation"
+            to="/post?mode=accommodation&intent=roommate"
             icon={Building2}
             title="List your room"
-            description="You have a spare room, partition, or bedspace. Post it and reach verified renters looking for a place like yours."
+            description="Already have a room or apartment? List it to find a compatible roommate or flatmate to share with — not for renting a whole place to a solo tenant."
             cta="List your room"
             gradient="from-brand-500 to-brand-700"
             highlights={["Free to list", "Reach 12k+ seekers", "ID-verified inquiries"]}

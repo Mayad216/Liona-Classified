@@ -27,9 +27,13 @@ export function useBusinessProfile(userId: string | undefined) {
     if (token) {
       try {
         const res = await api.businessProfile(token);
-        setProfile((res.data as BusinessProfile | null) ?? null);
-        setLoading(false);
-        return;
+        const remote = (res.data as BusinessProfile | null) ?? null;
+        if (remote) {
+          setProfile(remote);
+          setLoading(false);
+          return;
+        }
+        /* API reachable but no profile yet — fall through to local store */
       } catch {
         /* fall back to local store when API unavailable */
       }
@@ -61,9 +65,14 @@ export function useBusinessProfile(userId: string | undefined) {
       try {
         const token = getStoredAuthToken();
         if (token) {
-          const res = await api.upsertBusinessProfile(input, token);
-          setProfile(res.data as BusinessProfile);
-          return res.data as BusinessProfile;
+          try {
+            const res = await api.upsertBusinessProfile(input, token);
+            setProfile(res.data as BusinessProfile);
+            saveStoredBusinessProfile(userId, input);
+            return res.data as BusinessProfile;
+          } catch {
+            /* fall back to local store when API unavailable (demo / offline) */
+          }
         }
 
         const local = saveStoredBusinessProfile(userId, input);

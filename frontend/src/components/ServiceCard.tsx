@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function ServiceCard({ service, compact = false }: Props) {
-  const detailPath = serviceDetailPath(service.id);
+  const detailPath = serviceDetailPath(service);
 
   return (
     <Link

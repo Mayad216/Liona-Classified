@@ -34,9 +34,11 @@ import { MobileAppSection } from "@/components/MobileAppSection";
 import { HeroHeadlineCollage } from "@/components/HeroHeadlineCollage";
 import { mockListings, mockJobs, mockServices } from "@/data/mock";
 import {
-  SERVICE_CATEGORIES,
+  HOME_SERVICE_CATEGORIES,
+  STANDALONE_SERVICE_CATEGORIES,
   categoryStartingPrices,
   featuredServices,
+  standaloneServiceListPath,
 } from "@/lib/services/catalog";
 import { formatPrice } from "@/lib/utils";
 import { PICKUP_ENABLED } from "@/lib/pickup/flags";
@@ -53,6 +55,7 @@ export function Home() {
       <StatsBand />
       <TopJobs />
       <PopularServices />
+      <StandaloneServices />
       <TrustSection />
       <MobileAppSection />
       <Pricing />
@@ -331,7 +334,7 @@ const categories = [
     to: "/services",
     icon: Wrench,
     title: "Home Services",
-    sub: "Cleaning, meals, maintenance, moving & more",
+    sub: "Cleaning, AC, plumbing, pest control & more",
     count: "1,200+ listings",
     gradient: "from-accent-500 to-accent-700",
   },
@@ -519,9 +522,12 @@ function TopJobs() {
 }
 
 function PopularServices() {
-  const topCategories = SERVICE_CATEGORIES.filter((c) => c.popular);
-  const featured = featuredServices(mockServices, 4);
-  const startingPrices = useMemo(() => categoryStartingPrices(mockServices), []);
+  const topCategories = HOME_SERVICE_CATEGORIES.filter((c) => c.popular);
+  const featured = featuredServices(mockServices, 4, { homeServicesOnly: true });
+  const startingPrices = useMemo(
+    () => categoryStartingPrices(mockServices, HOME_SERVICE_CATEGORIES),
+    []
+  );
 
   return (
     <section className="container mt-24">
@@ -536,15 +542,7 @@ function PopularServices() {
         {topCategories.map(({ key, label, description, icon: Icon }) => (
           <Link
             key={key}
-            to={
-              key === "Language Tutoring"
-                ? "/tutoring"
-                : key === "Homemade Meals"
-                  ? "/meals"
-                : key === "Movers"
-                  ? "/movers"
-                  : `/services?category=${encodeURIComponent(key)}`
-            }
+            to={`/services?category=${encodeURIComponent(key)}`}
             className="group flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 transition hover:border-brand-200 hover:shadow-sm"
           >
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white">
@@ -579,6 +577,48 @@ function PopularServices() {
       <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {featured.map((s) => (
           <ServiceCard key={s.id} service={s} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function StandaloneServices() {
+  const startingPrices = useMemo(
+    () => categoryStartingPrices(mockServices, STANDALONE_SERVICE_CATEGORIES),
+    []
+  );
+
+  return (
+    <section className="container mt-24">
+      <SectionHeader
+        eyebrow="Specialty services"
+        title="Movers, tutoring & homemade meals"
+      />
+      <p className="mt-2 max-w-2xl text-sm text-slate-600">
+        Each category has its own dedicated marketplace — separate from home services.
+      </p>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        {STANDALONE_SERVICE_CATEGORIES.map(({ key, label, description, icon: Icon }) => (
+          <Link
+            key={key}
+            to={standaloneServiceListPath(key)}
+            className="group flex items-start gap-4 rounded-2xl border border-slate-200/70 bg-white p-5 transition hover:border-brand-200 hover:shadow-sm"
+          >
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white">
+              <Icon className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-900">{label}</p>
+              <p className="mt-1 text-sm text-slate-600">{description}</p>
+              <p className="mt-2 text-xs font-semibold text-brand-600">
+                {startingPrices[key] !== undefined
+                  ? `From ${formatPrice(startingPrices[key]!)}`
+                  : "Browse listings"}
+              </p>
+            </div>
+          </Link>
         ))}
       </div>
     </section>

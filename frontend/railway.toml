@@ -1,0 +1,10 @@
+# Railway service: Settings → Root Directory = frontend
+
+[build]
+builder = "RAILPACK"
+buildCommand = "npm ci && npm run build:staging"
+
+[deploy]
+startCommand = "npx --yes serve@14 dist -s -l $PORT"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

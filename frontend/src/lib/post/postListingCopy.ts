@@ -2,6 +2,9 @@ import type { ServiceCategory } from "@/types";
 
 export type PostMode = "accommodation" | "job" | "service";
 
+/** Rental listing vs Match Me roommate / flatmate listing. */
+export type AccommodationListingIntent = "rental" | "roommate";
+
 export type PostStepKey = "category" | "basics" | "details" | "photos" | "pricing" | "review";
 
 export function getPostSteps(mode: PostMode): PostStepKey[] {
@@ -177,6 +180,27 @@ const SERVICE_BASICS_OVERRIDES: Partial<Record<ServiceCategory, Partial<PostBasi
   },
 };
 
+const ROOMMATE_BASICS: PostBasicsCopy = {
+  headingTitle: "Your shared home",
+  headingSub:
+    "Describe the room and flat so potential flatmates know what sharing with you would be like.",
+  titleLabel: "Listing title",
+  titlePlaceholder: "e.g. Private room in Marina — seeking female flatmate",
+  areaLabel: "Area / neighborhood",
+  areaPlaceholder: "e.g. Dubai Marina",
+  descriptionPlaceholder:
+    "Who lives here now, house rules, daily routine, and what kind of roommate would fit best.",
+};
+
+const ROOMMATE_PHOTOS: PostPhotosCopy = {
+  headingSub:
+    "Show the room, shared spaces, and building — flatmates decide faster with clear photos.",
+  coverPhotoLabel: "Cover photo",
+  photoHint: "Photo",
+  aiHint:
+    "Include the bedroom, kitchen, and living area so seekers can picture shared life with you.",
+};
+
 const MODE_PHOTOS: Record<PostMode, PostPhotosCopy> = {
   accommodation: {
     headingSub: "Listings with 5+ photos get 3× more views — show the room, building, and area.",
@@ -327,8 +351,12 @@ export const SERVICE_POST_COPY: Record<ServiceCategory, ServicePostCopy> = {
 
 export function getBasicsCopy(
   mode: PostMode,
-  serviceCategory?: ServiceCategory | null
+  serviceCategory?: ServiceCategory | null,
+  accommodationIntent: AccommodationListingIntent = "rental"
 ): PostBasicsCopy {
+  if (mode === "accommodation" && accommodationIntent === "roommate") {
+    return ROOMMATE_BASICS;
+  }
   const base = MODE_BASICS[mode];
   if (mode !== "service" || !serviceCategory) return base;
 
@@ -338,8 +366,12 @@ export function getBasicsCopy(
 
 export function getPhotosCopy(
   mode: PostMode,
-  serviceCategory?: ServiceCategory | null
+  serviceCategory?: ServiceCategory | null,
+  accommodationIntent: AccommodationListingIntent = "rental"
 ): PostPhotosCopy {
+  if (mode === "accommodation" && accommodationIntent === "roommate") {
+    return ROOMMATE_PHOTOS;
+  }
   const base = MODE_PHOTOS[mode];
   if (mode !== "service" || !serviceCategory) return base;
 

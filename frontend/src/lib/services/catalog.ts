@@ -19,6 +19,31 @@ import type { Emirate, Service, ServiceCategory, ServiceProviderAccountType } fr
 
 export type ServiceFilterCategory = ServiceCategory | "All";
 
+/** Categories with their own top-level nav routes — not part of Home Services. */
+export const STANDALONE_SERVICE_CATEGORY_KEYS = [
+  "Movers",
+  "Language Tutoring",
+  "Homemade Meals",
+] as const satisfies readonly ServiceCategory[];
+
+export type StandaloneServiceCategory = (typeof STANDALONE_SERVICE_CATEGORY_KEYS)[number];
+
+export function isStandaloneServiceCategory(
+  category: ServiceCategory
+): category is StandaloneServiceCategory {
+  return (STANDALONE_SERVICE_CATEGORY_KEYS as readonly string[]).includes(category);
+}
+
+export function standaloneServiceListPath(category: StandaloneServiceCategory): string {
+  if (category === "Movers") return "/movers";
+  if (category === "Language Tutoring") return "/tutoring";
+  return "/meals";
+}
+
+export function standaloneServicePostPath(category: StandaloneServiceCategory): string {
+  return `/post?mode=service&category=${encodeURIComponent(category)}`;
+}
+
 export const SERVICE_EMIRATES: (Emirate | "All UAE")[] = [
   "All UAE",
   "Dubai",
@@ -87,6 +112,22 @@ export const SERVICE_CATEGORIES: {
     popular: true,
   },
   {
+    key: "Pest Control",
+    label: "Pest Control",
+    description: "Cockroaches, bed bugs, rodents & more",
+    icon: Bug,
+    popular: true,
+  },
+];
+
+export const STANDALONE_SERVICE_CATEGORIES: {
+  key: StandaloneServiceCategory;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  popular: boolean;
+}[] = [
+  {
     key: "Movers",
     label: "Movers",
     description: "Movers, packers & delivery",
@@ -107,13 +148,15 @@ export const SERVICE_CATEGORIES: {
     icon: ChefHat,
     popular: true,
   },
-  {
-    key: "Pest Control",
-    label: "Pest Control",
-    description: "Cockroaches, bed bugs, rodents & more",
-    icon: Bug,
-    popular: true,
-  },
+];
+
+/** Home Services browse/post categories only (excludes standalone verticals). */
+export const HOME_SERVICE_CATEGORIES = SERVICE_CATEGORIES;
+
+/** All listing categories including standalone verticals. */
+export const ALL_SERVICE_CATEGORIES = [
+  ...SERVICE_CATEGORIES,
+  ...STANDALONE_SERVICE_CATEGORIES,
 ];
 
 export const PEST_TYPES = [
@@ -193,9 +236,21 @@ export function providerAccountLabel(type: ServiceProviderAccountType): string {
   return type === "business" ? "Business account" : "Individual";
 }
 
-/** Canonical detail URL for any home-service listing. */
-export function serviceDetailPath(serviceId: string): string {
-  return `/services/${encodeURIComponent(serviceId)}`;
+/** Canonical detail URL for a service listing. */
+export function serviceDetailPath(service: Pick<Service, "id" | "category"> | string): string {
+  if (typeof service === "string") {
+    return `/services/${encodeURIComponent(service)}`;
+  }
+  if (service.category === "Movers") {
+    return `/movers/${encodeURIComponent(service.id)}`;
+  }
+  if (service.category === "Language Tutoring") {
+    return `/tutoring/${encodeURIComponent(service.id)}`;
+  }
+  if (service.category === "Homemade Meals") {
+    return `/meals/${encodeURIComponent(service.id)}`;
+  }
+  return `/services/${encodeURIComponent(service.id)}`;
 }
 
 export const SERVICE_TRUST_PILLARS = [
@@ -238,6 +293,10 @@ export const SERVICE_HIGHLIGHTS = [
   "Insured for accidental damage",
   "Clear upfront pricing",
 ];
+
+export function homeServicesOnly(services: Service[]): Service[] {
+  return services.filter((s) => !isStandaloneServiceCategory(s.category));
+}
 
 export function filterServices(
   services: Service[],
@@ -301,18 +360,24 @@ export function minPriceForCategory(
 
 /** Lowest `priceFrom` per category, derived only from live listings. */
 export function categoryStartingPrices(
-  services: Service[]
+  services: Service[],
+  categories: readonly { key: ServiceCategory }[] = ALL_SERVICE_CATEGORIES
 ): Partial<Record<ServiceCategory, number>> {
   const prices: Partial<Record<ServiceCategory, number>> = {};
-  for (const { key } of SERVICE_CATEGORIES) {
+  for (const { key } of categories) {
     const min = minPriceForCategory(services, key);
     if (min !== null) prices[key] = min;
   }
   return prices;
 }
 
-export function featuredServices(services: Service[], limit = 4): Service[] {
-  return [...services]
+export function featuredServices(
+  services: Service[],
+  limit = 4,
+  opts?: { homeServicesOnly?: boolean }
+): Service[] {
+  const pool = opts?.homeServicesOnly ? homeServicesOnly(services) : services;
+  return [...pool]
     .sort((a, b) => {
       if (a.featured !== b.featured) return a.featured ? -1 : 1;
       return b.rating - a.rating;

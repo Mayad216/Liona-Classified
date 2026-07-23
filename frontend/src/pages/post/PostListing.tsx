@@ -11,6 +11,9 @@ import {
   Sparkles,
   ShieldCheck,
   Loader2,
+  Truck,
+  BookOpen,
+  ChefHat,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -18,7 +21,7 @@ import { Select } from "@/components/ui/Select";
 import { BusinessProfileSetupForm } from "@/components/business/BusinessProfileSetupForm";
 import { useAuth } from "@/lib/auth";
 import { useBusinessProfile } from "@/lib/businessProfile/useBusinessProfile";
-import { SERVICE_CATEGORIES, TUTORING_LANGUAGES, TUTORING_LEVELS, MEAL_CUISINES, MEAL_DIETARY_TAGS, MEAL_FULFILLMENT_OPTIONS, MEAL_OFFERING_TYPES, PEST_TYPES } from "@/lib/services/catalog";
+import { HOME_SERVICE_CATEGORIES, ALL_SERVICE_CATEGORIES, isStandaloneServiceCategory, TUTORING_LANGUAGES, TUTORING_LEVELS, MEAL_CUISINES, MEAL_DIETARY_TAGS, MEAL_FULFILLMENT_OPTIONS, MEAL_OFFERING_TYPES, PEST_TYPES } from "@/lib/services/catalog";
 import {
   getBasicsCopy,
   getPhotosCopy,
@@ -26,6 +29,7 @@ import {
   getServicePostCopy,
   JOB_DETAILS_COPY,
   postStepLabel,
+  type AccommodationListingIntent,
   type PostMode,
   type PostStepKey,
 } from "@/lib/post/postListingCopy";
@@ -58,9 +62,30 @@ import {
   type JobListingSuggestions,
 } from "@/lib/post/jobListingAi";
 import type { JobApplicationMethod, JobApplicationQuestion } from "@/types/jobApplication";
+import type {
+  Emirate,
+  MealFulfillment,
+  MealOfferingType,
+  ServiceCategory,
+  ServiceProviderAccountType,
+  TutoringSessionFormat,
+} from "@/types";
 import { cn, formatPrice } from "@/lib/utils";
 
 type Mode = PostMode;
+
+type PostChooseOption = {
+  id: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  sub: string;
+  gradient: string;
+  mode?: Mode;
+  serviceCategory?: ServiceCategory;
+  navigateTo?: string;
+  requiresAuth?: boolean;
+  listingIntent?: AccommodationListingIntent;
+};
 
 function renderStepContent(
   stepKey: PostStepKey,
@@ -85,6 +110,7 @@ function renderStepContent(
     serviceCategoryForBasics: ServiceCategory | null;
     businessCompanyName?: string;
     businessIndustry?: string;
+    accommodationIntent: AccommodationListingIntent;
   }
 ) {
   switch (stepKey) {
@@ -106,12 +132,14 @@ function renderStepContent(
           serviceCategoryForBasics={
             props.mode === "service" ? props.serviceCategory : props.activeServiceCategory
           }
+          accommodationIntent={props.accommodationIntent}
         />
       );
     case "details":
       return (
         <DetailsStep
           mode={props.mode}
+          accommodationIntent={props.accommodationIntent}
           serviceCategory={props.serviceCategory}
           onServiceCategoryChange={props.onServiceCategoryChange}
           jobRole={props.jobRole}
@@ -129,7 +157,11 @@ function renderStepContent(
       );
     case "photos":
       return (
-        <PhotosStep mode={props.mode} serviceCategory={props.activeServiceCategory} />
+        <PhotosStep
+          mode={props.mode}
+          serviceCategory={props.activeServiceCategory}
+          accommodationIntent={props.accommodationIntent}
+        />
       );
     case "pricing":
       return <PricingStep mode={props.mode} />;
@@ -157,13 +189,16 @@ export function PostListing() {
       ? initialMode
       : null;
 
-  const presetServiceCategory = SERVICE_CATEGORIES.find(
+  const presetServiceCategory = ALL_SERVICE_CATEGORIES.find(
     (c) => c.key === searchParams.get("category")
   )?.key;
+  const [listingIntent, setListingIntent] = useState<AccommodationListingIntent>(
+    searchParams.get("intent") === "roommate" ? "roommate" : "rental"
+  );
   const [mode, setMode] = useState<Mode | null>(presetMode);
   const [step, setStep] = useState(presetMode ? 1 : 0);
   const [serviceCategory, setServiceCategory] = useState<ServiceCategory>(
-    presetServiceCategory ?? SERVICE_CATEGORIES[0].key
+    presetServiceCategory ?? HOME_SERVICE_CATEGORIES[0].key
   );
   const [serviceCategoryChosen, setServiceCategoryChosen] = useState(Boolean(presetServiceCategory));
   const [jobRole, setJobRole] = useState("");
@@ -184,7 +219,7 @@ export function PostListing() {
     isComplete: hasBusinessProfile,
     save: saveBusinessProfile,
   } = useBusinessProfile(user?.id);
-  const fromMatchRoom = presetMode === "accommodation";
+  const fromMatchRoom = mode === "accommodation" && listingIntent === "roommate";
 
   useEffect(() => {
     if (mode !== "job" || !businessProfile || jobIndustry) return;
@@ -196,16 +231,54 @@ export function PostListing() {
   const activeServiceCategory =
     mode === "service" && serviceCategoryChosen ? serviceCategory : null;
 
-  const handlePickMode = (picked: Mode) => {
-    if (picked === "job" && !user) {
+  const handlePickOption = (option: PostChooseOption) => {
+    if (option.requiresAuth && !user) {
+      const redirect =
+        option.navigateTo ??
+        (option.mode === "job"
+          ? "/post?mode=job"
+          : option.mode === "accommodation" && option.listingIntent === "roommate"
+            ? "/post?mode=accommodation&intent=roommate"
+          : option.mode === "service" && option.serviceCategory
+            ? `/post?mode=service&category=${encodeURIComponent(option.serviceCategory)}`
+            : option.mode
+              ? `/post?mode=${option.mode}`
+              : "/post");
+      navigate(`/auth/login?redirect=${encodeURIComponent(redirect)}`);
+      return;
+    }
+
+    if (option.navigateTo) {
+      navigate(option.navigateTo);
+      return;
+    }
+
+    if (option.mode === "job" && !user) {
       navigate("/auth/login?redirect=/post?mode=job");
       return;
     }
-    setMode(picked);
-    setStep(1);
+
+    if (option.serviceCategory) {
+      setServiceCategory(option.serviceCategory);
+      setServiceCategoryChosen(true);
+    } else if (option.mode === "service") {
+      setServiceCategory(HOME_SERVICE_CATEGORIES[0].key);
+      setServiceCategoryChosen(true);
+    }
+
+    if (option.listingIntent) {
+      setListingIntent(option.listingIntent);
+    } else if (option.mode === "accommodation") {
+      setListingIntent("rental");
+    }
+
+    if (option.mode) {
+      setMode(option.mode);
+      setStep(1);
+    }
   };
 
-  if (!mode) return <ChooseMode onPick={handlePickMode} />;
+  if (!mode) return <ChooseMode onPick={handlePickOption} />;
 
   if (mode === "job") {
     if (!user) {
@@ -301,6 +374,13 @@ export function PostListing() {
           </p>
         )}
 
+        {fromMatchRoom && (
+          <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-800">
+            <Sparkles className="h-3.5 w-3.5" />
+            Match Me — listing for a roommate or flatmate
+          </p>
+        )}
+
         <Stepper step={step} steps={postSteps} />
 
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
@@ -333,6 +413,7 @@ export function PostListing() {
                 mode === "service" ? serviceCategory : activeServiceCategory,
               businessCompanyName: businessProfile?.company_name,
               businessIndustry: businessProfile?.industry,
+              accommodationIntent: listingIntent,
             })}
 
           <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
@@ -388,57 +469,102 @@ function Stepper({ step, steps }: { step: number; steps: PostStepKey[] }) {
   );
 }
 
-function ChooseMode({ onPick }: { onPick: (m: Mode) => void }) {
-  const options: { mode: Mode; icon: React.ComponentType<{ className?: string }>; title: string; sub: string; gradient: string }[] = [
+function ChooseMode({ onPick }: { onPick: (option: PostChooseOption) => void }) {
+  const options: PostChooseOption[] = [
     {
+      id: "accommodation",
       mode: "accommodation",
+      listingIntent: "rental",
       icon: Building2,
       title: "Accommodation",
       sub: "Rent out a room, partition, studio, or full apartment.",
       gradient: "from-brand-500 to-brand-700",
     },
     {
-      mode: "job",
-      icon: Briefcase,
-      title: "Post a job",
-      sub: "Business Profiles only — hire on behalf of your registered company.",
-      gradient: "from-emerald-500 to-emerald-700",
+      id: "match-room",
+      mode: "accommodation",
+      listingIntent: "roommate",
+      icon: Sparkles,
+      title: "List your room",
+      sub: "Already have a room or apartment? List it to find a compatible roommate or flatmate to share with — not for renting a whole place to a solo tenant.",
+      gradient: "from-violet-500 to-brand-700",
     },
     {
+      id: "job",
+      mode: "job",
+      icon: Briefcase,
+      title: "Post a Job",
+      sub: "Business Profiles only — hire on behalf of your registered company.",
+      gradient: "from-emerald-500 to-emerald-700",
+      requiresAuth: true,
+    },
+    {
+      id: "movers",
+      mode: "service",
+      serviceCategory: "Movers",
+      icon: Truck,
+      title: "Movers",
+      sub: "List moving, packing, and delivery services across the UAE.",
+      gradient: "from-sky-500 to-sky-700",
+    },
+    {
+      id: "tutor",
+      mode: "service",
+      serviceCategory: "Language Tutoring",
+      icon: BookOpen,
+      title: "Tutor",
+      sub: "Offer private language lessons — online, in-person, or both.",
+      gradient: "from-indigo-500 to-indigo-700",
+    },
+    {
+      id: "meals",
+      mode: "service",
+      serviceCategory: "Homemade Meals",
+      icon: ChefHat,
+      title: "Homemade meals",
+      sub: "Sell daily meals, tiffin boxes, or weekly meal plans from your kitchen.",
+      gradient: "from-amber-500 to-orange-600",
+    },
+    {
+      id: "home-service",
       mode: "service",
       icon: Wrench,
-      title: "Offer a service",
-      sub: "List cleaning, repairs, tutoring, homemade meals & more.",
+      title: "Offer a Service",
+      sub: "Cleaning, AC, plumbing, pest control, handyman & other home services.",
       gradient: "from-accent-500 to-accent-700",
     },
   ];
 
   return (
-    <div className="container max-w-4xl pt-12 pb-20">
+    <div className="container max-w-6xl pt-12 pb-20">
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">What are you posting?</h1>
         <p className="mt-2 text-slate-600">Pick a category to get started — takes 30 seconds.</p>
       </div>
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {options.map(({ mode, icon: Icon, title, sub, gradient }) => (
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {options.map((option) => {
+          const Icon = option.icon;
+          return (
           <button
-            key={mode}
-            onClick={() => onPick(mode)}
-            className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-7 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-soft"
+            key={option.id}
+            type="button"
+            onClick={() => onPick(option)}
+            className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-soft"
           >
             <div
-              className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-md`}
+              className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${option.gradient} text-white shadow-md`}
             >
               <Icon className="h-7 w-7" />
             </div>
-            <h3 className="mt-5 text-lg font-bold">{title}</h3>
-            <p className="mt-1 text-sm text-slate-600">{sub}</p>
+            <h3 className="mt-5 text-lg font-bold">{option.title}</h3>
+            <p className="mt-1 text-sm text-slate-600">{option.sub}</p>
             <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
               Start posting
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -458,6 +584,7 @@ function BasicsStep({
   serviceArea,
   onServiceAreaChange,
   serviceCategoryForBasics,
+  accommodationIntent = "rental",
 }: {
   mode: Mode;
   serviceCategory: ServiceCategory | null;
@@ -472,8 +599,9 @@ function BasicsStep({
   serviceArea: string;
   onServiceAreaChange: (value: string) => void;
   serviceCategoryForBasics: ServiceCategory | null;
+  accommodationIntent?: AccommodationListingIntent;
 }) {
-  const copy = getBasicsCopy(mode, serviceCategoryForBasics);
+  const copy = getBasicsCopy(mode, serviceCategoryForBasics, accommodationIntent);
   const areaOptions =
     mode === "service" && serviceCategoryForBasics
       ? serviceAreaOptions(serviceEmirate, areasForEmirate(serviceEmirate))
@@ -582,8 +710,139 @@ function PostTextArea({
   );
 }
 
+function RentalListingDetailsStep() {
+  return (
+    <div className="space-y-5">
+      <Heading title="Property details" sub="Tenants love specifics — fill in as much as you can." />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Room type"
+          options={[
+            { value: "Bedspace", label: "Bedspace" },
+            { value: "Partition", label: "Partition" },
+            { value: "Private Room", label: "Private Room" },
+            { value: "Studio", label: "Studio" },
+            { value: "Full Apartment", label: "Full Apartment" },
+          ]}
+        />
+        <Input type="number" label="Size (sqft)" placeholder="e.g. 1100" />
+        <Input type="number" label="Number of tenants" placeholder="2" />
+        <Input type="number" label="Deposit (AED)" placeholder="2500" />
+        <Select
+          label="Gender preference"
+          options={[
+            { value: "Any", label: "Any" },
+            { value: "Male", label: "Male" },
+            { value: "Female", label: "Female" },
+            { value: "Family", label: "Family" },
+          ]}
+        />
+        <Input label="Nationality preference" placeholder="Any" />
+      </div>
+      <ListingAmenitiesField />
+    </div>
+  );
+}
+
+function RoommateListingDetailsStep() {
+  return (
+    <div className="space-y-5">
+      <Heading
+        title="Flatmate listing details"
+        sub="For finding a roommate or flatmate to share your home — not for renting a whole unit to one tenant."
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Room on offer"
+          options={[
+            { value: "Bedspace", label: "Bedspace" },
+            { value: "Partition", label: "Partition" },
+            { value: "Private Room", label: "Private Room in shared flat" },
+          ]}
+        />
+        <Input type="number" label="Monthly rent — your share (AED)" placeholder="e.g. 2500" />
+        <Input type="number" label="Deposit (AED)" placeholder="e.g. 1000" />
+        <Input type="date" label="Available from" />
+        <Select
+          label="Preferred roommate gender"
+          options={[
+            { value: "Any", label: "Any" },
+            { value: "Male", label: "Male" },
+            { value: "Female", label: "Female" },
+            { value: "Family", label: "Family" },
+          ]}
+        />
+        <Input type="number" label="People already living here" placeholder="e.g. 2" />
+        <Select
+          label="Minimum stay"
+          options={[
+            { value: "1 month", label: "1 month" },
+            { value: "3 months", label: "3 months" },
+            { value: "6 months", label: "6 months" },
+            { value: "1 year", label: "1 year" },
+            { value: "Flexible", label: "Flexible" },
+          ]}
+        />
+        <Select
+          label="Bills"
+          options={[
+            { value: "Included", label: "Included in rent" },
+            { value: "Shared", label: "Split equally" },
+            { value: "Separate", label: "Paid separately" },
+          ]}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-brand-600" />
+          Attached bathroom
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-brand-600" />
+          Balcony access
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-brand-600" />
+          Furnished room
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-brand-600" />
+          Show in Match Me search
+        </label>
+      </div>
+      <Input
+        label="Who lives here now?"
+        placeholder="e.g. Two working professionals, quiet weekdays, social on weekends"
+      />
+      <ListingAmenitiesField />
+    </div>
+  );
+}
+
+function ListingAmenitiesField() {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700">Amenities</label>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {["WiFi", "AC", "Parking", "Gym", "Pool", "Furnished", "Bills Included", "Balcony"].map(
+          (a) => (
+            <label key={a} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              {a}
+            </label>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DetailsStep({
   mode,
+  accommodationIntent = "rental",
   serviceCategory,
   onServiceCategoryChange,
   jobRole,
@@ -599,6 +858,7 @@ function DetailsStep({
   businessCompanyName,
 }: {
   mode: Mode;
+  accommodationIntent?: AccommodationListingIntent;
   serviceCategory: ServiceCategory;
   onServiceCategoryChange: (category: ServiceCategory) => void;
   jobRole: string;
@@ -613,53 +873,12 @@ function DetailsStep({
   serviceArea: string;
   businessCompanyName?: string;
 }) {
+  if (mode === "accommodation" && accommodationIntent === "roommate") {
+    return <RoommateListingDetailsStep />;
+  }
+
   if (mode === "accommodation") {
-    return (
-      <div className="space-y-5">
-        <Heading title="Property details" sub="Tenants love specifics — fill in as much as you can." />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Select
-            label="Room type"
-            options={[
-              { value: "Bedspace", label: "Bedspace" },
-              { value: "Partition", label: "Partition" },
-              { value: "Private Room", label: "Private Room" },
-              { value: "Studio", label: "Studio" },
-              { value: "Full Apartment", label: "Full Apartment" },
-            ]}
-          />
-          <Input type="number" label="Size (sqft)" placeholder="e.g. 1100" />
-          <Input type="number" label="Number of tenants" placeholder="2" />
-          <Input type="number" label="Deposit (AED)" placeholder="2500" />
-          <Select
-            label="Gender preference"
-            options={[
-              { value: "Any", label: "Any" },
-              { value: "Male", label: "Male" },
-              { value: "Female", label: "Female" },
-              { value: "Family", label: "Family" },
-            ]}
-          />
-          <Input label="Nationality preference" placeholder="Any" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Amenities</label>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {["WiFi", "AC", "Parking", "Gym", "Pool", "Furnished", "Bills Included", "Balcony"].map(
-              (a) => (
-                <label key={a} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                  />
-                  {a}
-                </label>
-              )
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    return <RentalListingDetailsStep />;
   }
   if (mode === "job") {
     return (
@@ -973,6 +1192,9 @@ function ServiceDetailsForm({
   const isTutorListing = serviceCategory === "Language Tutoring";
   const isMealListing = serviceCategory === "Homemade Meals";
   const isPestListing = serviceCategory === "Pest Control";
+  const categoryOptions = isStandaloneServiceCategory(serviceCategory)
+    ? ALL_SERVICE_CATEGORIES.filter((c) => c.key === serviceCategory)
+    : HOME_SERVICE_CATEGORIES;
 
   const providerName =
     providerNameMode === "custom"
@@ -1040,7 +1262,8 @@ function ServiceDetailsForm({
           label="Category"
           value={serviceCategory}
           onChange={(e) => onServiceCategoryChange(e.target.value as ServiceCategory)}
-          options={SERVICE_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
+          options={categoryOptions.map((c) => ({ value: c.key, label: c.label }))}
+          disabled={categoryOptions.length === 1}
         />
         <Select
           label={accountType === "business" ? "Business name" : "Display name"}
@@ -1252,11 +1475,13 @@ function ServiceDetailsForm({
 function PhotosStep({
   mode,
   serviceCategory,
+  accommodationIntent = "rental",
 }: {
   mode: Mode;
   serviceCategory: ServiceCategory | null;
+  accommodationIntent?: AccommodationListingIntent;
 }) {
-  const copy = getPhotosCopy(mode, serviceCategory);
+  const copy = getPhotosCopy(mode, serviceCategory, accommodationIntent);
 
   return (
     <div className="space-y-5">
