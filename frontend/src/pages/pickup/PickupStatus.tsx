@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { usePickupBookings } from "@/lib/pickup/usePickupBookings";
+import { relationshipLabel } from "@/lib/services/serviceBooking";
 import { formatPrice } from "@/lib/utils";
 
 const statusLabels: Record<string, { label: string; tone: "brand" | "success" | "warning" | "outline" }> = {
@@ -127,6 +128,23 @@ export function PickupStatus() {
                 <p className="font-medium">{booking.dropoffAddress}</p>
               </div>
             </div>
+            {booking.bookingFor === "someone_else" && booking.recipientName && (
+              <div className="flex items-start gap-3">
+                <Users className="mt-0.5 h-4 w-4 text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-500">On-site contact</p>
+                  <p className="font-medium">
+                    {booking.recipientName}
+                    {booking.recipientRelationship && (
+                      <span className="font-normal text-slate-500">
+                        {" "}
+                        · {relationshipLabel(booking.recipientRelationship).toLowerCase()}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <div className="rounded-xl bg-slate-50 p-3">
                 <Truck className="h-4 w-4 text-slate-400" />

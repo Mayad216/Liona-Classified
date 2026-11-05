@@ -59,9 +59,9 @@ import { NotFound } from "@/pages/NotFound";
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen min-h-[100dvh] flex-col">
       <Navbar />
-      <main className="flex-1">
+      <main className="flex-1 safe-bottom">
         <Routes>
           <Route path="/" element={<Home />} />
 

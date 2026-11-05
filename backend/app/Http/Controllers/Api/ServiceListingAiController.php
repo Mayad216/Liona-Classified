@@ -20,7 +20,7 @@ class ServiceListingAiController extends Controller
             'area' => ['required', 'string', 'max:120'],
             'account_type' => ['nullable', 'string', 'in:individual,business'],
             'provider_name' => ['nullable', 'string', 'max:120'],
-            'price_from' => ['nullable', 'numeric'],
+            'price_from' => ['nullable', 'numeric', 'min:0'],
             'unit' => ['nullable', 'string', 'max:40'],
             'response_time' => ['nullable', 'string', 'max:40'],
             'years_experience' => ['nullable', 'string', 'max:20'],

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { CopilotAutoApplyConsentPanel } from "@/components/copilot/CopilotAutoApplyConsentPanel";
 import { CopilotJobAiPanel } from "@/components/copilot/CopilotJobAiPanel";
-import { api } from "@/lib/api";
+import { api, formatApiError } from "@/lib/api";
 import { useCopilotAiUsage } from "@/lib/copilot/useCopilotAiUsage";
 import { useCopilotAutoApply } from "@/lib/copilot/useCopilotAutoApply";
 import { useCopilotBilling } from "@/lib/copilot/useCopilotBilling";
@@ -152,7 +152,7 @@ export function CopilotJobsPage() {
                   `Auto-apply queued for ${jobTitle(match)} (status: ${app.status}).`
                 );
               } catch (e) {
-                setAutoApplyError(e instanceof Error ? e.message : "Auto-apply failed");
+                setAutoApplyError(formatApiError(e, "Auto-apply failed"));
               }
             }}
           />

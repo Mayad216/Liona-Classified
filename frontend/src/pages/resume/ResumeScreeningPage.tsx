@@ -45,10 +45,10 @@ export function ResumeScreeningPage() {
     );
   }
 
-  const handleComplete = () => {
+  const handleComplete = (completedAnswers: ResumeScreeningAnswers) => {
     const prefilledData = applyScreeningToResumeData(
-      { ...resume.data, builder_screening: answers },
-      answers
+      { ...resume.data, builder_screening: completedAnswers },
+      completedAnswers
     );
 
     save({

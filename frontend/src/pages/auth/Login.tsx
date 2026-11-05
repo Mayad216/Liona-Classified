@@ -3,22 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ApiError } from "@/lib/api";
+import { formatApiError } from "@/lib/api";
 import { isLiveApi } from "@/lib/apiMode";
 import { useAuth } from "@/lib/auth";
-
-function formatAuthError(err: unknown): string {
-  if (err instanceof ApiError) {
-    try {
-      const parsed = JSON.parse(err.message) as { message?: string };
-      if (parsed.message) return parsed.message;
-    } catch {
-      /* plain text body */
-    }
-    return err.message || "Sign-in failed";
-  }
-  return "Something went wrong";
-}
 
 export function Login() {
   const navigate = useNavigate();
@@ -71,7 +58,7 @@ export function Login() {
                     : "seeker";
                   navigate(role === "admin" ? "/admin" : "/dashboard");
                 } catch (err) {
-                  setError(formatAuthError(err));
+                  setError(formatApiError(err, "Sign-in failed"));
                 } finally {
                   setLoading(false);
                 }

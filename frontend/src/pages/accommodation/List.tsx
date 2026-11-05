@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { SlidersHorizontal, X, Search, MapPin, LayoutGrid, Map as MapIcon, Users } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { ListingCard } from "@/components/ListingCard";
 import { CatalogStatus } from "@/components/CatalogStatus";
 import { MapView } from "@/components/MapView";
@@ -21,7 +22,7 @@ import { cn, formatPrice } from "@/lib/utils";
 const AMENITIES = ["WiFi", "AC", "Parking", "Gym", "Pool", "Furnished", "Bills Included"];
 const ROOM_TYPES: RoomType[] = [
   "Bedspace",
-  "Partition",
+  "Room with Partition",
   "Private Room",
   "Studio",
   "Full Apartment",
@@ -398,8 +399,7 @@ function FilterPanel({
       <div>
         <h3 className="text-sm font-semibold text-slate-900">Price range (AED / month)</h3>
         <div className="mt-3 flex items-center gap-3">
-          <input
-            type="number"
+          <NumberInput
             min={0}
             value={filters.minPrice || ""}
             placeholder="Min"
@@ -407,8 +407,7 @@ function FilterPanel({
             className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-500"
           />
           <span className="text-slate-300">–</span>
-          <input
-            type="number"
+          <NumberInput
             value={filters.maxPrice === 20000 ? "" : filters.maxPrice}
             placeholder="Max"
             onChange={(e) =>

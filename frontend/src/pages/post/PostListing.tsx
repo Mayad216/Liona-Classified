@@ -33,6 +33,10 @@ import {
   type PostMode,
   type PostStepKey,
 } from "@/lib/post/postListingCopy";
+import {
+  ACCOMMODATION_MINIMUM_STAY_OPTIONS,
+  ACCOMMODATION_NOTICE_PERIOD_OPTIONS,
+} from "@/lib/post/accommodationListingCatalog";
 import { JobListingOptionField } from "@/components/post/JobListingOptionField";
 import { JobApplicationSetupSection } from "@/components/jobs/JobApplicationSetupSection";
 import { MultiSelect } from "@/components/ui/MultiSelect";
@@ -477,7 +481,7 @@ function ChooseMode({ onPick }: { onPick: (option: PostChooseOption) => void }) 
       listingIntent: "rental",
       icon: Building2,
       title: "Accommodation",
-      sub: "Rent out a room, partition, studio, or full apartment.",
+      sub: "Rent out a room, room with partition, studio, or full apartment.",
       gradient: "from-brand-500 to-brand-700",
     },
     {
@@ -719,7 +723,7 @@ function RentalListingDetailsStep() {
           label="Room type"
           options={[
             { value: "Bedspace", label: "Bedspace" },
-            { value: "Partition", label: "Partition" },
+            { value: "Room with Partition", label: "Room with Partition" },
             { value: "Private Room", label: "Private Room" },
             { value: "Studio", label: "Studio" },
             { value: "Full Apartment", label: "Full Apartment" },
@@ -738,6 +742,26 @@ function RentalListingDetailsStep() {
           ]}
         />
         <Input label="Nationality preference" placeholder="Any" />
+        <Select
+          label="Notice period"
+          options={[
+            { value: "", label: "Select notice period…" },
+            ...ACCOMMODATION_NOTICE_PERIOD_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+            })),
+          ]}
+        />
+        <Select
+          label="Minimum stay"
+          options={[
+            { value: "", label: "Select minimum stay…" },
+            ...ACCOMMODATION_MINIMUM_STAY_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+            })),
+          ]}
+        />
       </div>
       <ListingAmenitiesField />
     </div>
@@ -756,7 +780,7 @@ function RoommateListingDetailsStep() {
           label="Room on offer"
           options={[
             { value: "Bedspace", label: "Bedspace" },
-            { value: "Partition", label: "Partition" },
+            { value: "Room with Partition", label: "Room with Partition" },
             { value: "Private Room", label: "Private Room in shared flat" },
           ]}
         />
@@ -774,13 +798,23 @@ function RoommateListingDetailsStep() {
         />
         <Input type="number" label="People already living here" placeholder="e.g. 2" />
         <Select
+          label="Notice period"
+          options={[
+            { value: "", label: "Select notice period…" },
+            ...ACCOMMODATION_NOTICE_PERIOD_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+            })),
+          ]}
+        />
+        <Select
           label="Minimum stay"
           options={[
-            { value: "1 month", label: "1 month" },
-            { value: "3 months", label: "3 months" },
-            { value: "6 months", label: "6 months" },
-            { value: "1 year", label: "1 year" },
-            { value: "Flexible", label: "Flexible" },
+            { value: "", label: "Select minimum stay…" },
+            ...ACCOMMODATION_MINIMUM_STAY_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+            })),
           ]}
         />
         <Select

@@ -25,6 +25,8 @@ import { formatPrice } from "@/lib/utils";
 import { ServiceCard } from "@/components/ServiceCard";
 import { ServiceReviewsSection } from "@/components/services/ServiceReviewsSection";
 import { StarRatingDisplay } from "@/components/services/StarRatingDisplay";
+import { ServiceBookingModal } from "@/components/services/ServiceBookingModal";
+import { bookingSummary, type BookingContactDetails } from "@/lib/services/serviceBooking";
 import { useServiceReviews } from "@/lib/serviceReviews/useServiceReviews";
 
 export function ServiceDetail() {
@@ -84,6 +86,8 @@ function ServiceDetailContent({
   const { items: allServices } = useServices();
   const [slotId, setSlotId] = useState<string>(SERVICE_BOOKING_SLOTS[0].id);
   const [booked, setBooked] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState<BookingContactDetails | null>(null);
   const { stats: reviewStats } = useServiceReviews(
     service.id,
     service.category,
@@ -375,7 +379,7 @@ function ServiceDetailContent({
               <Button
                 size="lg"
                 className="mt-5 w-full"
-                onClick={() => setBooked(true)}
+                onClick={() => setBookingOpen(true)}
                 disabled={booked}
               >
                 {booked ? (
@@ -388,9 +392,15 @@ function ServiceDetailContent({
                   </>
                 )}
               </Button>
-              <p className="mt-2 text-center text-[11px] text-slate-500">
-                Free cancellation up to 3 hours before your slot
-              </p>
+              {bookingDetails ? (
+                <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-800">
+                  {bookingSummary(bookingDetails)}
+                </p>
+              ) : (
+                <p className="mt-2 text-center text-[11px] text-slate-500">
+                  Free cancellation up to 3 hours before your slot
+                </p>
+              )}
               <Button variant="outline" size="md" className="mt-3 w-full">
                 <MessageCircle className="h-4 w-4" /> Message {service.provider}
               </Button>
@@ -410,6 +420,18 @@ function ServiceDetailContent({
           </div>
         </section>
       </div>
+
+      <ServiceBookingModal
+        service={service}
+        slotLabel={selectedSlot.label}
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        onConfirm={(next) => {
+          setBookingDetails(next);
+          setBooked(true);
+          setBookingOpen(false);
+        }}
+      />
     </div>
   );
 }

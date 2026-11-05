@@ -161,6 +161,8 @@ class AiResumeParserService
             ->post('https://api.openai.com/v1/chat/completions', [
                 'model' => config('copilot.openai_model'),
                 'temperature' => 0.1,
+                // Required for `temperature` to be accepted on GPT-6 models.
+                'reasoning_effort' => 'none',
                 'response_format' => ['type' => 'json_object'],
                 'messages' => [
                     ['role' => 'system', 'content' => $system],

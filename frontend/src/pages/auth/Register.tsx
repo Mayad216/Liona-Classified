@@ -3,21 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight, User, Phone, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ApiError } from "@/lib/api";
+import { formatApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-
-function formatAuthError(err: unknown): string {
-  if (err instanceof ApiError) {
-    try {
-      const parsed = JSON.parse(err.message) as { message?: string };
-      if (parsed.message) return parsed.message;
-    } catch {
-      /* plain text body */
-    }
-    return err.message || "Registration failed";
-  }
-  return "Something went wrong";
-}
 
 export function Register() {
   const navigate = useNavigate();
@@ -89,7 +76,7 @@ export function Register() {
                   await register({ name, email, phone, password });
                   navigate("/match/verify?onboarding=1");
                 } catch (err) {
-                  setError(formatAuthError(err));
+                  setError(formatApiError(err, "Registration failed"));
                 } finally {
                   setLoading(false);
                 }

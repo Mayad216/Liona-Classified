@@ -17,7 +17,7 @@ type Props = {
   sources: ResumeScreeningSourceMeta[];
   answers: ResumeScreeningAnswers;
   onChange: (answers: ResumeScreeningAnswers) => void;
-  onComplete: () => void;
+  onComplete: (answers: ResumeScreeningAnswers) => void;
   onCancel?: () => void;
   initialStep?: number;
   completeLabel?: string;
@@ -68,7 +68,7 @@ export function ResumeScreeningWizard({
 
     setError(undefined);
     if (isLast) {
-      onComplete();
+      onComplete(answers);
       return;
     }
     setStep((s) => s + 1);

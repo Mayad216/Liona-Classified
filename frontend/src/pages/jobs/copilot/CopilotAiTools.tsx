@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { formatApiError } from "@/lib/api";
 import { useCopilotAiUsage } from "@/lib/copilot/useCopilotAiUsage";
 import {
   copilotGenerateSummary,
@@ -28,7 +29,7 @@ export function CopilotAiToolsPage() {
       if (res.data.usage) setUsage(res.data.usage as import("@/types/copilot").CopilotAiUsage);
       return res.data;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
+      setError(formatApiError(e, "Request failed"));
       return null;
     } finally {
       setLoading(null);

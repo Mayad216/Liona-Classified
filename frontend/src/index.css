@@ -7,10 +7,12 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow-x: hidden;
   }
 
   ::selection {
@@ -57,5 +59,23 @@
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .mobile-scroll-tabs {
+    @apply flex gap-1 overflow-x-auto scrollbar-none pb-1;
+    -webkit-overflow-scrolling: touch;
   }
 }

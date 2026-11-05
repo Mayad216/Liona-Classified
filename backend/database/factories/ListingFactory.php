@@ -19,7 +19,7 @@ class ListingFactory extends Factory
                 'Furnished Studio with Pool View',
                 'Private Room — Female Only',
                 'Spacious 2BR Family Apartment',
-                'Modern Partition in Al Nahda',
+                'Modern Room with Partition in Al Nahda',
             ]),
             'description' => $this->faker->paragraph(4),
             'emirate' => $this->faker->randomElement($emirates),
@@ -27,7 +27,7 @@ class ListingFactory extends Factory
             'price' => $this->faker->numberBetween(1000, 8000),
             'deposit' => $this->faker->numberBetween(500, 5000),
             'room_type' => $this->faker->randomElement([
-                'Bedspace', 'Partition', 'Private Room', 'Studio', 'Full Apartment',
+                'Bedspace', 'Room with Partition', 'Private Room', 'Studio', 'Full Apartment',
             ]),
             'size_sqft' => $this->faker->numberBetween(400, 2000),
             'tenants_count' => $this->faker->numberBetween(1, 4),

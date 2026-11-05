@@ -47,6 +47,11 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
+function normalizeRoomType(value: string): RoomType {
+  if (value === "Partition") return "Room with Partition";
+  return value as RoomType;
+}
+
 export function extractRows<T = unknown>(payload: unknown): T[] {
   if (Array.isArray(payload)) return payload as T[];
   const row = asRecord(payload);
@@ -77,7 +82,7 @@ export function mapListing(raw: unknown): Listing {
     emirate: asString(row.emirate, "Dubai") as Emirate,
     area: asString(row.area, "Dubai"),
     price: asNumber(row.price),
-    roomType: asString(row.room_type ?? row.roomType, "Private Room") as RoomType,
+    roomType: normalizeRoomType(asString(row.room_type ?? row.roomType, "Private Room")),
     photos: photos.length ? photos : [DEFAULT_PHOTO],
     amenities: asStringArray(row.amenities),
     tenants: asNumber(row.tenants_count ?? row.tenants, 1),

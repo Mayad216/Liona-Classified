@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { api, getStoredAuthToken } from "@/lib/api";
 import type {
   CopilotAutomationSettings,
@@ -106,8 +107,7 @@ export function CopilotAutomationSettingsPage() {
           </label>
           <label className="mt-3 block text-sm">
             Delivery hour (0–23, local server time)
-            <input
-              type="number"
+            <NumberInput
               min={0}
               max={23}
               className="mt-1 w-24 rounded-lg border border-slate-200 px-3 py-2"

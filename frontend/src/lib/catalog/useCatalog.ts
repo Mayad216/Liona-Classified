@@ -1,20 +1,9 @@
 import { useEffect, useState } from "react";
 import { mockJobs, mockListings, mockServices } from "@/data/mock";
-import { api, ApiError } from "@/lib/api";
+import { api, formatApiError } from "@/lib/api";
 import { isLiveApi } from "@/lib/apiMode";
 import type { Job, Listing, Service } from "@/types";
 import { extractRows, mapJob, mapListing, mapService } from "./mappers";
-
-function parseApiError(err: unknown): string {
-  if (!(err instanceof ApiError) && !(err instanceof Error)) return "Request failed";
-  const raw = err.message;
-  try {
-    const data = JSON.parse(raw) as { message?: string };
-    return data.message ?? raw;
-  } catch {
-    return raw;
-  }
-}
 
 type CatalogState<T> = {
   items: T[];
@@ -57,7 +46,7 @@ export function useListings(fallback = mockListings): CatalogState<Listing> {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setState({ items: [], loading: false, error: parseApiError(err), live: true });
+        setState({ items: [], loading: false, error: formatApiError(err, "Could not load data."), live: true });
       });
 
     return () => {
@@ -101,7 +90,7 @@ export function useListing(id: string | undefined, fallback = mockListings) {
       .catch((err: Error) => {
         if (cancelled) return;
         setListing(null);
-        setError(parseApiError(err));
+        setError(formatApiError(err, "Could not load data."));
         setLoading(false);
       });
 
@@ -138,7 +127,7 @@ export function useJobs(fallback = mockJobs): CatalogState<Job> {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setState({ items: [], loading: false, error: parseApiError(err), live: true });
+        setState({ items: [], loading: false, error: formatApiError(err, "Could not load data."), live: true });
       });
 
     return () => {
@@ -182,7 +171,7 @@ export function useJob(id: string | undefined, fallback = mockJobs) {
       .catch((err: Error) => {
         if (cancelled) return;
         setJob(null);
-        setError(parseApiError(err));
+        setError(formatApiError(err, "Could not load data."));
         setLoading(false);
       });
 
@@ -219,7 +208,7 @@ export function useServices(fallback = mockServices): CatalogState<Service> {
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setState({ items: [], loading: false, error: parseApiError(err), live: true });
+        setState({ items: [], loading: false, error: formatApiError(err, "Could not load data."), live: true });
       });
 
     return () => {
@@ -263,7 +252,7 @@ export function useService(id: string | undefined, fallback = mockServices) {
       .catch((err: Error) => {
         if (cancelled) return;
         setService(null);
-        setError(parseApiError(err));
+        setError(formatApiError(err, "Could not load data."));
         setLoading(false);
       });
 

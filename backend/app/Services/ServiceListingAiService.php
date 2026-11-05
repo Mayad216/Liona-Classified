@@ -123,7 +123,7 @@ TXT;
 
     private function chat(string $prompt): ?string
     {
-        $apiKey = config('services.openai.key') ?? env('OPENAI_API_KEY');
+        $apiKey = config('resume.openai_api_key');
         if (! $apiKey) {
             return null;
         }
@@ -132,13 +132,15 @@ TXT;
             $response = Http::withToken($apiKey)
                 ->timeout(45)
                 ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => config('services.openai.model', 'gpt-4o-mini'),
+                    'model' => config('resume.openai_model', 'gpt-6-luna'),
                     'messages' => [
                         ['role' => 'system', 'content' => self::SYSTEM],
                         ['role' => 'user', 'content' => $prompt],
                     ],
                     'temperature' => 0.65,
-                    'max_tokens' => 500,
+                    // Required for `temperature` to be accepted on GPT-6 models.
+                    'reasoning_effort' => 'none',
+                    'max_completion_tokens' => 500,
                 ]);
 
             if (! $response->successful()) {

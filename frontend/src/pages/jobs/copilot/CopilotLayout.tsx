@@ -37,16 +37,17 @@ export function CopilotLayout() {
           </Link>
         </div>
 
-        <nav className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+        <nav className="mb-6 border-b border-slate-200 pb-3">
+          <div className="mobile-scroll-tabs gap-2">
           {links.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                `inline-flex shrink-0 touch-target items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
                   isActive
                     ? "bg-brand-600 text-white"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    : "bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`
               }
             >
@@ -58,10 +59,10 @@ export function CopilotLayout() {
             <NavLink
               to="/jobs/copilot/admin"
               className={({ isActive }) =>
-                `inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                `inline-flex shrink-0 touch-target items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
                   isActive
                     ? "bg-brand-600 text-white"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    : "bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`
               }
             >
@@ -69,6 +70,7 @@ export function CopilotLayout() {
               Admin
             </NavLink>
           )}
+          </div>
         </nav>
 
         <Outlet />

@@ -2,7 +2,7 @@
 
 return [
     'openai_api_key' => env('OPENAI_API_KEY', env('RESUME_OPENAI_API_KEY')),
-    'openai_model' => env('COPILOT_OPENAI_MODEL', env('RESUME_OPENAI_MODEL', 'gpt-4o-mini')),
+    'openai_model' => env('COPILOT_OPENAI_MODEL', env('RESUME_OPENAI_MODEL', 'gpt-6-luna')),
 
     'upload' => [
         'disk' => env('COPILOT_RESUME_DISK', 'local'),

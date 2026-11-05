@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin,
@@ -11,15 +11,22 @@ import {
   CheckCircle2,
   Minus,
   Plus,
-  Phone,
   ShieldCheck,
   Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Input";
+import { BookingContactFields } from "@/components/services/BookingContactFields";
 import { VehicleIcon } from "@/components/pickup/VehicleIcon";
 import { useAuth } from "@/lib/auth";
+import {
+  PICKUP_BOOKING_COPY,
+  emptyBookingContact,
+  isBookingContactValid,
+  validateBookingContact,
+  type BookingContactDetails,
+  type BookingContactErrors,
+} from "@/lib/services/serviceBooking";
 import { useDashboardStore } from "@/lib/dashboardStore";
 import {
   calculateFare,
@@ -70,9 +77,31 @@ export function PickupBook() {
   const [vehicleId, setVehicleId] = useState<VehicleSizeId>("pickup");
   const [helpers, setHelpers] = useState(2);
   const [scheduleIdx, setScheduleIdx] = useState(0);
-  const [phone, setPhone] = useState(profile?.phone ?? "");
-  const [notes, setNotes] = useState("");
+  const [contact, setContact] = useState<BookingContactDetails>(() =>
+    emptyBookingContact(user, profile?.phone ?? "")
+  );
+  const [contactErrors, setContactErrors] = useState<BookingContactErrors>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // The session and dashboard profile resolve after mount — fill blanks only,
+  // so anything already typed survives.
+  useEffect(() => {
+    if (!user) return;
+    setContact((prev) => ({
+      ...prev,
+      bookerName: prev.bookerName || user.name,
+      bookerEmail: prev.bookerEmail || user.email,
+      bookerPhone: prev.bookerPhone || profile?.phone || "",
+    }));
+  }, [user, profile?.phone]);
+
+  function updateContact<K extends keyof BookingContactDetails>(
+    key: K,
+    value: BookingContactDetails[K]
+  ) {
+    setContact((prev) => ({ ...prev, [key]: value }));
+    setContactErrors((prev) => ({ ...prev, [key]: undefined }));
+  }
 
   const fare = useMemo(
     () => calculateFare(vehicleId, pickup, dropoff, helpers),
@@ -94,7 +123,7 @@ export function PickupBook() {
       case "schedule":
         return scheduleIdx >= 0;
       case "confirm":
-        return phone.trim().length >= 8;
+        return isBookingContactValid(contact, PICKUP_BOOKING_COPY.recipientNoun);
       default:
         return false;
     }
@@ -117,6 +146,12 @@ export function PickupBook() {
     }
     if (!vehicle) return;
 
+    const validation = validateBookingContact(contact, PICKUP_BOOKING_COPY.recipientNoun);
+    if (Object.keys(validation).length > 0) {
+      setContactErrors(validation);
+      return;
+    }
+
     setSubmitting(true);
     const id = `PK-${Date.now().toString(36).toUpperCase()}`;
     const booking: PickupBooking = {
@@ -134,8 +169,19 @@ export function PickupBook() {
       helpers,
       scheduledAt: new Date().toISOString(),
       scheduleLabel: schedule.label,
-      contactPhone: phone.trim(),
-      notes: notes.trim(),
+      contactPhone: contact.bookerPhone.trim(),
+      notes: contact.notes.trim(),
+      bookingFor: contact.bookingFor,
+      bookerName: contact.bookerName.trim(),
+      bookerEmail: contact.bookerEmail.trim(),
+      recipientName:
+        contact.bookingFor === "someone_else" ? contact.recipientName.trim() : undefined,
+      recipientRelationship:
+        contact.bookingFor === "someone_else" ? contact.recipientRelationship : undefined,
+      recipientDetail:
+        contact.bookingFor === "someone_else"
+          ? contact.recipientDetail.trim() || undefined
+          : undefined,
       fare,
       status: schedule.id === "now" ? "searching" : "confirmed",
       createdAt: new Date().toISOString(),
@@ -275,10 +321,10 @@ export function PickupBook() {
                 helpers={helpers}
                 schedule={schedule}
                 fare={fare}
-                phone={phone}
-                notes={notes}
-                onPhone={setPhone}
-                onNotes={setNotes}
+                contact={contact}
+                contactErrors={contactErrors}
+                onContactChange={updateContact}
+                prefilled={Boolean(user)}
               />
             )}
           </div>
@@ -589,10 +635,10 @@ function ConfirmStep({
   helpers,
   schedule,
   fare,
-  phone,
-  notes,
-  onPhone,
-  onNotes,
+  contact,
+  contactErrors,
+  onContactChange,
+  prefilled,
 }: {
   pickup: string;
   dropoff: string;
@@ -600,10 +646,13 @@ function ConfirmStep({
   helpers: number;
   schedule: (typeof scheduleSlots)[number];
   fare: ReturnType<typeof calculateFare>;
-  phone: string;
-  notes: string;
-  onPhone: (v: string) => void;
-  onNotes: (v: string) => void;
+  contact: BookingContactDetails;
+  contactErrors: BookingContactErrors;
+  onContactChange: <K extends keyof BookingContactDetails>(
+    key: K,
+    value: BookingContactDetails[K]
+  ) => void;
+  prefilled: boolean;
 }) {
   return (
     <div className="space-y-5">
@@ -659,25 +708,14 @@ function ConfirmStep({
         </p>
       </div>
 
-      <Input
-        label="Contact phone"
-        type="tel"
-        value={phone}
-        onChange={(e) => onPhone(e.target.value)}
-        placeholder="+971 50 123 4567"
-        icon={<Phone className="h-4 w-4" />}
-        required
-      />
-      <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          Notes for driver (optional)
-        </label>
-        <textarea
-          value={notes}
-          onChange={(e) => onNotes(e.target.value)}
-          rows={2}
-          placeholder="Building access, elevator, fragile items…"
-          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+      <div className="border-t border-slate-100 pt-5">
+        <BookingContactFields
+          copy={PICKUP_BOOKING_COPY}
+          details={contact}
+          errors={contactErrors}
+          onChange={onContactChange}
+          prefilled={prefilled}
+          idPrefix="pickup-booking"
         />
       </div>
 

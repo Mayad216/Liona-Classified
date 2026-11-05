@@ -17,17 +17,28 @@ function mergeLocalSetup(remote: ResumeRecord, id: string): ResumeRecord {
     ...remote,
     setup_step: local.setup_step,
     template: local.template ?? remote.template,
+    data: local.updated_at >= (remote.updated_at ?? "")
+      ? { ...remote.data, ...local.data }
+      : remote.data,
   };
 }
 
+function readCachedResume(id: string | undefined): ResumeRecord | null {
+  if (!id) return null;
+  return resumeStore.get(id) ?? null;
+}
+
 export function useResume(id: string | undefined) {
-  const [resume, setResume] = useState<ResumeRecord | null>(null);
+  const [resume, setResume] = useState<ResumeRecord | null>(() => readCachedResume(id));
   const [saving, setSaving] = useState(false);
   const [useLocal, setUseLocal] = useState(false);
   const timer = useRef<number>();
 
   useEffect(() => {
     if (!id) return;
+
+    const cached = resumeStore.get(id);
+    if (cached) setResume(cached);
 
     const token = getStoredAuthToken();
     const guestToken = resumeStore.getGuestToken();
@@ -83,34 +94,46 @@ export function useResume(id: string | undefined) {
       };
       setResume(next);
 
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(async () => {
+      const localPatch: Partial<ResumeRecord> = {
+        ...patch,
+        data: next.data,
+        updated_at: next.updated_at,
+      };
+      resumeStore.save(String(id), localPatch);
+
+      const persistRemote = async () => {
         setSaving(true);
         try {
           const token = getStoredAuthToken();
           const guestToken = resumeStore.getGuestToken();
 
           if (useLocal || (!token && !guestToken)) {
-            resumeStore.save(String(id), patch);
             setSaving(false);
             return;
           }
 
-          resumeStore.save(String(id), patch);
-
           if (token) {
-            const res = await api.updateResume(id, patch, token);
+            const res = await api.updateResume(id, localPatch, token);
             setResume(mergeLocalSetup(res.data, id));
           } else if (guestToken) {
-            const res = await api.updateResume(id, patch, undefined, guestToken);
+            const res = await api.updateResume(id, localPatch, undefined, guestToken);
             setResume(mergeLocalSetup(res.data, id));
           }
         } catch {
-          resumeStore.save(String(id), patch);
           setUseLocal(true);
         } finally {
           setSaving(false);
         }
+      };
+
+      window.clearTimeout(timer.current);
+      if (patch.setup_step) {
+        void persistRemote();
+        return;
+      }
+
+      timer.current = window.setTimeout(() => {
+        void persistRemote();
       }, 600);
     },
     [id, resume, useLocal]

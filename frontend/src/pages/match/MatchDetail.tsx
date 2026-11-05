@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { mockCandidates } from "@/lib/matchmaking/mockProfiles";
 import { useMatchProfile } from "@/lib/matchmaking/useMatchProfile";
-import { scorePair, badgeForScore } from "@/lib/matchmaking/engine";
+import { badgeForScore } from "@/lib/matchmaking/engine";
+import { useRoommateMatchPair } from "@/lib/matchmaking/useRoommateMatches";
 import { MatchScoreBreakdown } from "@/components/match/MatchScoreBreakdown";
 import { MatchProfileOverview, ProfileBasicsPanel } from "@/components/match/ProfileBasicsFields";
 import { CompatibilityRadar } from "@/components/match/CompatibilityRadar";
@@ -22,14 +23,12 @@ import { CompatibilityRadar } from "@/components/match/CompatibilityRadar";
 export function MatchDetail() {
   const { id } = useParams();
   const { profile } = useMatchProfile();
-  const candidate = mockCandidates.find(
-    (c) => c.userId === id && c.isDiscoverable !== false
+  const candidate = useMemo(
+    () => mockCandidates.find((c) => c.userId === id && c.isDiscoverable !== false),
+    [id]
   );
 
-  const result = useMemo(
-    () => (candidate ? scorePair(profile, candidate) : null),
-    [profile, candidate]
-  );
+  const { result } = useRoommateMatchPair(profile, candidate);
 
   if (!candidate || !result) {
     return (

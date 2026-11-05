@@ -54,6 +54,23 @@ class EmbeddingService
         return is_array($vector) ? array_map('floatval', $vector) : null;
     }
 
+    /**
+     * Vector for this exact text if it is already stored, without contacting
+     * the API. Lets callers that rank many records stay off the network.
+     *
+     * @return list<float>|null
+     */
+    public function cachedVector(Model $model, string $text): ?array
+    {
+        return CopilotEmbedding::query()
+            ->where('embeddable_type', $model->getMorphClass())
+            ->where('embeddable_id', $model->getKey())
+            ->where('model', $this->model())
+            ->where('text_hash', hash('sha256', $text))
+            ->first()
+            ?->vector;
+    }
+
     public function embedModel(Model $model, string $text): ?CopilotEmbedding
     {
         $hash = hash('sha256', $text);

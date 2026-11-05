@@ -141,6 +141,7 @@ Route::prefix('v1')->group(function () {
         Route::post('me/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
         Route::delete('me/notifications/{notification}', [NotificationController::class, 'destroy']);
         Route::get('roommate-matches', [RoommateMatchController::class, 'index']);
+        Route::post('roommate-matches/search', [RoommateMatchController::class, 'search']);
         Route::get('roommate-matches/{user}', [RoommateMatchController::class, 'pair']);
 
         Route::post('community/topics', [CommunityController::class, 'storeTopic']);

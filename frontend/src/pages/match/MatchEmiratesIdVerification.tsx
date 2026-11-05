@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { formatApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
   formatEmiratesId,
@@ -129,7 +130,9 @@ export function MatchEmiratesIdVerification() {
                 dateOfBirth,
               })
                 .then(() => navigate(returnTo))
-                .catch((err: Error) => setLocalError(err.message));
+                .catch((err: unknown) =>
+                  setLocalError(formatApiError(err, "Verification failed"))
+                );
             }}
           >
             <Input

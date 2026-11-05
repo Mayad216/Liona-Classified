@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { formatPrice } from "@/lib/utils";
 
 interface CostInputs {
@@ -121,8 +122,7 @@ export function MoveInCalculator() {
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <Field label="Monthly rent (AED)">
-                <input
-                  type="number"
+                <NumberInput
                   value={c.rent}
                   onChange={(e) => setC({ ...c, rent: Number(e.target.value) || 0 })}
                   className="input"
@@ -171,8 +171,7 @@ export function MoveInCalculator() {
               />
 
               <Field label="Agency commission (%)" hint="Usually 5% of annual rent">
-                <input
-                  type="number"
+                <NumberInput
                   step="0.1"
                   min={0}
                   value={c.agencyPct}
@@ -187,8 +186,7 @@ export function MoveInCalculator() {
               </Field>
 
               <Field label="Ejari fee (AED)">
-                <input
-                  type="number"
+                <NumberInput
                   value={c.ejari}
                   onChange={(e) => setC({ ...c, ejari: Number(e.target.value) || 0 })}
                   className="input"
@@ -222,8 +220,7 @@ export function MoveInCalculator() {
               />
 
               <Field label="Furniture / setup (AED)">
-                <input
-                  type="number"
+                <NumberInput
                   value={c.furniture}
                   onChange={(e) =>
                     setC({ ...c, furniture: Number(e.target.value) || 0 })
@@ -232,8 +229,7 @@ export function MoveInCalculator() {
                 />
               </Field>
               <Field label="Other broker / commission (AED)">
-                <input
-                  type="number"
+                <NumberInput
                   value={c.brokerFee}
                   onChange={(e) =>
                     setC({ ...c, brokerFee: Number(e.target.value) || 0 })
@@ -373,8 +369,7 @@ function PctDepositField({
     <label className="block">
       <span className="text-xs font-semibold text-slate-700">{label} (% of annual rent)</span>
       <div className="mt-1.5 flex items-center gap-2">
-        <input
-          type="number"
+        <NumberInput
           step="0.1"
           min={0}
           max={100}

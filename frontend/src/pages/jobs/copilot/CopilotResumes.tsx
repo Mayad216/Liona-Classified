@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { FileUp, Loader2, Star, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { api, getStoredAuthToken } from "@/lib/api";
+import { api, getStoredAuthToken, formatApiError } from "@/lib/api";
 import type { CopilotResumeSummary } from "@/types/copilot";
 
 export function CopilotResumesPage() {
@@ -46,7 +46,7 @@ export function CopilotResumesPage() {
       setMessage(res.message);
       await refresh();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Upload failed");
+      setMessage(formatApiError(e, "Upload failed"));
     } finally {
       setUploading(false);
     }

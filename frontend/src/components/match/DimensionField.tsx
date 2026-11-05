@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { NumberInput } from "@/components/ui/NumberInput";
 import type { Dimension } from "@/lib/matchmaking/types";
 import { LanguageMultiSelectField } from "@/components/match/LanguageMultiSelectField";
 import { LocationSelectField } from "@/components/match/LocationSelectField";
@@ -184,8 +185,7 @@ export function DimensionField({ dimension, value, onChange, compact = false }: 
             <span>Max</span>
           </div>
           <div className="flex items-center gap-3">
-            <input
-              type="number"
+            <NumberInput
               min={type.min}
               max={v[1]}
               step={step}
@@ -194,8 +194,7 @@ export function DimensionField({ dimension, value, onChange, compact = false }: 
               className="h-10 w-20 rounded-lg border border-slate-200 px-2 text-sm focus:border-brand-500 focus:outline-none"
             />
             <div className="flex-1 h-1 rounded-full bg-slate-200" />
-            <input
-              type="number"
+            <NumberInput
               min={v[0]}
               max={type.max}
               step={step}

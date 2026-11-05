@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import type { InputHTMLAttributes, ReactNode } from "react";
+import { nonNegativeNumberProps } from "@/lib/forms/numberInput";
 import { cn } from "@/lib/utils";
 
 interface Props extends InputHTMLAttributes<HTMLInputElement> {
@@ -38,6 +39,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
             className
           )}
           {...rest}
+          {...nonNegativeNumberProps(rest)}
         />
       </div>
       {hint && !error && <p className="mt-1 text-xs text-slate-500">{hint}</p>}

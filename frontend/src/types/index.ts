@@ -7,7 +7,7 @@ export type Emirate =
   | "Fujairah"
   | "Umm Al Quwain";
 
-export type RoomType = "Bedspace" | "Partition" | "Private Room" | "Studio" | "Full Apartment";
+export type RoomType = "Bedspace" | "Room with Partition" | "Private Room" | "Studio" | "Full Apartment";
 
 export type GenderPreference = "Male" | "Female" | "Any" | "Family";
 

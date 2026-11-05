@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, getStoredAuthToken } from "@/lib/api";
+import { api, getStoredAuthToken, formatApiError } from "@/lib/api";
 import type { CopilotDashboard } from "@/types/copilot";
 
 export function useCopilotDashboard() {
@@ -22,7 +22,7 @@ export function useCopilotDashboard() {
       const res = await api.copilotDashboard(token);
       setData(res.data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load dashboard");
+      setError(formatApiError(e, "Could not load dashboard"));
       setData(null);
     } finally {
       setLoading(false);

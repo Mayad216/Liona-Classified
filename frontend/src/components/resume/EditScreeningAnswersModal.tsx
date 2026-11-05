@@ -39,10 +39,10 @@ export function EditScreeningAnswersModal({
 
   if (!open) return null;
 
-  const handleSave = () => {
+  const handleSave = (completedAnswers: ResumeScreeningAnswers) => {
     const nextData = applyScreeningToResumeData(
-      { ...data, builder_screening: answers },
-      answers,
+      { ...data, builder_screening: completedAnswers },
+      completedAnswers,
       { overwriteExisting: false }
     );
     onSave(nextData);

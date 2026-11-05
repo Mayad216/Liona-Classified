@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, getStoredAuthToken, ApiError } from "@/lib/api";
+import { api, getStoredAuthToken, formatApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
   dobMatchesEmiratesId,
@@ -8,19 +8,6 @@ import {
   type EmiratesIdVerificationStatus,
   writeLocalEmiratesIdStatus,
 } from "@/lib/matchmaking/emiratesId";
-
-function parseApiMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    try {
-      const parsed = JSON.parse(err.message) as { message?: string };
-      if (parsed.message) return parsed.message;
-    } catch {
-      /* plain text */
-    }
-    return err.message || "Verification failed";
-  }
-  return "Something went wrong";
-}
 
 export function useEmiratesIdVerification() {
   const { user, updateUser } = useAuth();
@@ -131,7 +118,7 @@ export function useEmiratesIdVerification() {
           setSubmitting(false);
           return next;
         } catch (err) {
-          const msg = parseApiMessage(err);
+          const msg = formatApiError(err, "Verification failed");
           setError(msg);
           setSubmitting(false);
           throw new Error(msg);

@@ -206,7 +206,7 @@ const businessBayReviews: AreaCommunityReview[] = [
     cleanlinessScore: 3.5,
     maintenanceScore: 4,
     nationalitiesMentioned: ["European", "Indian"],
-    text: "Office crowd during week, newer buildings, rent feels steep for partitions.",
+    text: "Office crowd during week, newer buildings, rent feels steep for rooms with partitions.",
     helpful: 19,
     postedAt: "2026-05-11T13:00:00Z",
   },
@@ -331,7 +331,7 @@ const rawInsights: AreaInsight[] = [
     "Business Bay",
     "neighborhood",
     "Dubai",
-    "Weekday office crowd, newer builds, but sharers say partitions are pricey for the location.",
+    "Weekday office crowd, newer builds, but sharers say rooms with partitions are pricey for the location.",
     businessBayReviews
   ),
   buildInsight(

@@ -44,12 +44,20 @@ export CACHE_STORE="${CACHE_STORE:-file}"
 export QUEUE_CONNECTION="${QUEUE_CONNECTION:-sync}"
 
 # Normalize Railway / plugin MySQL variable names.
+[[ -n "${DATABASE_URL:-}" && -z "${DB_URL:-}" ]] && export DB_URL="${DATABASE_URL}"
 [[ -n "${MYSQL_URL:-}" && -z "${DB_URL:-}" ]] && export DB_URL="${MYSQL_URL}"
+[[ -n "${MYSQLURL:-}" && -z "${DB_URL:-}" ]] && export DB_URL="${MYSQLURL}"
 [[ -n "${MYSQLHOST:-}" && -z "${DB_HOST:-}" ]] && export DB_HOST="${MYSQLHOST}"
+[[ -n "${MYSQL_HOST:-}" && -z "${DB_HOST:-}" ]] && export DB_HOST="${MYSQL_HOST}"
 [[ -n "${MYSQLPORT:-}" && -z "${DB_PORT:-}" ]] && export DB_PORT="${MYSQLPORT}"
+[[ -n "${MYSQL_PORT:-}" && -z "${DB_PORT:-}" ]] && export DB_PORT="${MYSQL_PORT}"
 [[ -n "${MYSQLDATABASE:-}" && -z "${DB_DATABASE:-}" ]] && export DB_DATABASE="${MYSQLDATABASE}"
+[[ -n "${MYSQL_DATABASE:-}" && -z "${DB_DATABASE:-}" ]] && export DB_DATABASE="${MYSQL_DATABASE}"
 [[ -n "${MYSQLUSER:-}" && -z "${DB_USERNAME:-}" ]] && export DB_USERNAME="${MYSQLUSER}"
+[[ -n "${MYSQL_USER:-}" && -z "${DB_USERNAME:-}" ]] && export DB_USERNAME="${MYSQL_USER}"
 [[ -n "${MYSQLPASSWORD:-}" && -z "${DB_PASSWORD:-}" ]] && export DB_PASSWORD="${MYSQLPASSWORD}"
+[[ -n "${MYSQL_PASSWORD:-}" && -z "${DB_PASSWORD:-}" ]] && export DB_PASSWORD="${MYSQL_PASSWORD}"
+[[ -n "${MYSQL_ROOT_PASSWORD:-}" && -z "${DB_PASSWORD:-}" ]] && export DB_PASSWORD="${MYSQL_ROOT_PASSWORD}"
 
 if on_railway; then
   export DB_CONNECTION=mysql
@@ -62,12 +70,11 @@ chmod -R ug+rwx storage bootstrap/cache 2>/dev/null || chmod -R 777 storage boot
 
 log "PHP: $(php -r 'echo PHP_VERSION;')"
 log "APP_URL: ${APP_URL:-unset}"
-log "FRONTEND_URL: ${FRONTEND_URL:-unset}"
 log "DB_CONNECTION: ${DB_CONNECTION:-unset}"
 log "DB_HOST: ${DB_HOST:-unset}"
+log "DB_PORT: ${DB_PORT:-unset}"
 log "DB_DATABASE: ${DB_DATABASE:-unset}"
 log "DB_URL set: $( [[ -n "${DB_URL:-}" ]] && echo yes || echo no )"
-log "SESSION_DRIVER: ${SESSION_DRIVER}"
 log "PORT: ${PORT}"
 
 php artisan config:clear >/dev/null 2>&1 || log "config:clear skipped"
@@ -85,32 +92,49 @@ database_ready() {
   " 2>/dev/null || echo "unknown"
 }
 
-if [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" ]]; then
-  log "Waiting for database..."
-  sleep 5
-  log "Running migrations..."
-  if php artisan migrate --force --no-interaction; then
-    log "Migrations complete."
-    state="$(database_ready)"
-    if [[ "${state}" == "empty" ]]; then
-      log "Seeding database (first run)..."
-      php artisan db:seed --force --no-interaction && log "Seed complete." || log "WARNING: seed failed"
+has_mysql_config() {
+  [[ -n "${DB_URL:-}" || -n "${DB_HOST:-}" || -n "${MYSQLHOST:-}" || -n "${MYSQL_HOST:-}" ]]
+}
+
+db_connect_ok=false
+
+if has_mysql_config; then
+  if [[ "${DB_HOST:-}" == "127.0.0.1" || "${DB_HOST:-}" == "localhost" ]] && [[ -z "${DB_URL:-}" ]]; then
+    log "ERROR: DB_HOST is ${DB_HOST:-empty} with no DB_URL — Laravel connects to localhost and gets 'Connection refused'."
+    log "Fix: backend Variables → Add Reference → MySQL → MYSQL_URL as DB_URL"
+  fi
+
+  log "Waiting for MySQL (up to 60s)..."
+  if php scripts/wait-for-db.php; then
+    db_connect_ok=true
+    log "Running migrations..."
+    if php artisan migrate --force --no-interaction; then
+      log "Migrations complete."
+      state="$(database_ready)"
+      if [[ "${state}" == "empty" ]]; then
+        log "Seeding database..."
+        php artisan db:seed --force --no-interaction && log "Seed complete." || log "WARNING: seed failed"
+      else
+        log "Database already seeded (${state})."
+      fi
     else
-      log "Database already seeded (${state})."
+      log "ERROR: migrations failed."
+      db_connect_ok=false
     fi
   else
-    log "ERROR: migrations failed — verify MySQL service is linked to this backend service."
+    log "ERROR: could not connect to MySQL. Ensure:"
+    log "  1) MySQL service is running in the SAME Railway project/environment"
+    log "  2) Backend has DB_URL=\${{MySQL.MYSQL_URL}} (use Variable Reference, not typed localhost)"
+    log "  3) Redeploy backend AFTER MySQL finishes provisioning"
   fi
 elif on_railway; then
-  log "ERROR: No MySQL configured. Add these backend Variables (use Railway reference picker):"
-  log "  DB_CONNECTION=mysql"
-  log "  DB_HOST=\${{MySQL.MYSQLHOST}}"
-  log "  DB_PORT=\${{MySQL.MYSQLPORT}}"
-  log "  DB_DATABASE=\${{MySQL.MYSQLDATABASE}}"
-  log "  DB_USERNAME=\${{MySQL.MYSQLUSER}}"
-  log "  DB_PASSWORD=\${{MySQL.MYSQLPASSWORD}}"
-  log "Or set DB_URL=\${{MySQL.MYSQL_URL}}"
-  log "Without MySQL, the API uses SQLite and tables like listings do not exist."
+  log "ERROR: No MySQL configured on backend service."
+  log "Add Variable Reference: DB_URL=\${{MySQL.MYSQL_URL}} (replace MySQL with your DB service name)"
+fi
+
+if on_railway && [[ "${db_connect_ok}" != "true" ]]; then
+  log "Refusing to start API without a working MySQL connection."
+  exit 1
 fi
 
 log "Starting web server on [::]:${PORT} ..."

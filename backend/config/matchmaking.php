@@ -39,6 +39,35 @@ return [
             'cap' => 0.05,
         ],
         'dealbreaker_override_min_score' => 85,
+        // Compatibility below this on a deal-breaker dimension excludes the match.
+        'dealbreaker_threshold' => 0.5,
+    ],
+
+    /* -------------------------------------------------------------------------
+     * Semantic (embedding) dimension
+     * -------------------------------------------------------------------------
+     *
+     * Deliberately NOT part of `dimensions`: it has no question to answer, so
+     * it must not reach the profile form that `/roommate-matches/config` feeds.
+     * The engine appends it to the breakdown at scoring time instead.
+     *
+     * `floor` matters. Two unrelated English paragraphs still score ~0.6-0.75
+     * cosine on text-embedding-3-small, so raw similarity would make everyone
+     * look alike. We rescale [floor, 1] onto [0, 1] to recover usable spread.
+     */
+    'semantic' => [
+        'enabled' => env('MATCHMAKING_SEMANTIC_ENABLED', true),
+        'key' => 'bio_affinity',
+        'label' => 'Lifestyle description',
+        'category' => 'lifestyle',
+        'weight' => 0.45,
+        // Below this, a bio is too thin to embed meaningfully.
+        'min_chars' => 40,
+        'floor' => 0.62,
+        // Cap on embedding API calls per request. Cached vectors are free, so
+        // this only bites on a cold candidate list; the rest warm up over
+        // subsequent searches.
+        'max_live_calls' => 10,
     ],
 
     /* -------------------------------------------------------------------------

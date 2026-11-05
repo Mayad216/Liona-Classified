@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, getStoredAuthToken } from "@/lib/api";
+import { api, getStoredAuthToken, formatApiError } from "@/lib/api";
 import {
   getStoredBusinessProfile,
   saveStoredBusinessProfile,
@@ -79,9 +79,7 @@ export function useBusinessProfile(userId: string | undefined) {
         setProfile(local);
         return local;
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Could not save Business Profile.";
-        setError(message);
+        setError(formatApiError(err, "Could not save Business Profile."));
         throw err;
       } finally {
         setSaving(false);

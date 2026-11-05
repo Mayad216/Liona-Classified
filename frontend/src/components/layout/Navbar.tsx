@@ -71,12 +71,24 @@ type NavItem = {
 
 const primaryNavItems: NavItem[] = [
   { to: "/accommodation", label: "Accommodation", icon: Building2 },
-  { to: "/match", label: "Match Me", icon: Sparkles },
+  { to: "/match", label: "Matchmaking", icon: Sparkles },
   {
     to: "/resume",
-    label: "Resume Builder",
+    label: "Resume builder",
     icon: FileText,
     isActive: (pathname) => pathname.startsWith("/resume"),
+  },
+  {
+    to: "/tutoring",
+    label: "Tutors",
+    icon: Languages,
+    isActive: isTutoringActive,
+  },
+  {
+    to: "/services",
+    label: "Home Services",
+    icon: Wrench,
+    isActive: isServicesHomeActive,
   },
   {
     to: "/movers",
@@ -85,22 +97,10 @@ const primaryNavItems: NavItem[] = [
     isActive: isMoversActive,
   },
   {
-    to: "/tutoring",
-    label: "Language Tutoring",
-    icon: Languages,
-    isActive: isTutoringActive,
-  },
-  {
     to: "/meals",
-    label: "Homemade meals",
+    label: "Homemade Meals",
     icon: UtensilsCrossed,
     isActive: isMealsActive,
-  },
-  {
-    to: "/services",
-    label: "Home Services",
-    icon: Wrench,
-    isActive: isServicesHomeActive,
   },
 ];
 
@@ -113,7 +113,7 @@ const jobsNavItems: NavItem[] = [
   },
   {
     to: "/jobs/copilot",
-    label: "Job CoPilot",
+    label: "Jobs CoPilot",
     icon: Bot,
     isActive: isCopilotActive,
   },
@@ -256,7 +256,7 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300",
+        "sticky top-0 z-40 w-full transition-all duration-300 safe-top",
         scrolled
           ? "border-b border-slate-200/70 bg-white/85 backdrop-blur-xl"
           : "bg-transparent"
@@ -318,23 +318,25 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-0.5 sm:gap-1.5">
           <Link
             to="/messages"
             aria-label="Messages"
-            className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
           >
             <MessageCircle className="h-5 w-5" />
           </Link>
           <Link
             to="/wishlist"
             aria-label="Wishlist"
-            className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+            className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
           >
             <Heart className="h-5 w-5" />
           </Link>
           <NotificationBell />
-          <LanguageSwitcher />
+          <div className="hidden sm:block">
+            <LanguageSwitcher />
+          </div>
           {user ? (
             <div className="relative hidden md:block" ref={menuRef}>
               <button
@@ -388,6 +390,9 @@ export function Navbar() {
             <Button size="sm" className="hidden sm:inline-flex">
               <Plus className="h-4 w-4" />
               Post Ad
+            </Button>
+            <Button size="sm" className="inline-flex sm:hidden touch-target px-3" aria-label="Post ad">
+              <Plus className="h-4 w-4" />
             </Button>
           </Link>
           <button

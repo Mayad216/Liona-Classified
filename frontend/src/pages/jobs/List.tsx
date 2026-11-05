@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Search, MapPin, Briefcase, Building, TrendingUp } from "lucide-react";
+import { Search, MapPin, Briefcase, Building, TrendingUp, SlidersHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { MobileFilterDrawer } from "@/components/ui/MobileFilterDrawer";
 import { Select } from "@/components/ui/Select";
 import { JobCard } from "@/components/JobCard";
 import { useJobs } from "@/lib/catalog/useCatalog";
@@ -19,6 +20,145 @@ const EMPLOYMENT: EmploymentType[] = [
 ];
 const EXPERIENCE: ExperienceLevel[] = ["Entry", "Mid", "Senior", "Lead", "Executive"];
 
+function JobFilterPanel({
+  employment,
+  setEmployment,
+  experience,
+  setExperience,
+  industry,
+  setIndustry,
+  industries,
+  minSalary,
+  setMinSalary,
+  remoteOnly,
+  setRemoteOnly,
+}: {
+  employment: Set<EmploymentType>;
+  setEmployment: (s: Set<EmploymentType>) => void;
+  experience: Set<ExperienceLevel>;
+  setExperience: (s: Set<ExperienceLevel>) => void;
+  industry: string;
+  setIndustry: (v: string) => void;
+  industries: string[];
+  minSalary: number;
+  setMinSalary: (v: number) => void;
+  remoteOnly: boolean;
+  setRemoteOnly: (v: boolean) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Employment type</h3>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {EMPLOYMENT.map((e) => {
+            const active = employment.has(e);
+            return (
+              <button
+                key={e}
+                type="button"
+                onClick={() => {
+                  const s = new Set(employment);
+                  if (active) s.delete(e);
+                  else s.add(e);
+                  setEmployment(s);
+                }}
+                className={cn(
+                  "rounded-full border px-3 py-2 text-xs font-medium transition sm:py-1.5",
+                  active
+                    ? "border-brand-600 bg-brand-600 text-white"
+                    : "border-slate-200 text-slate-700 hover:border-slate-300"
+                )}
+              >
+                {e}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Experience</h3>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-1.5">
+          {EXPERIENCE.map((e) => {
+            const active = experience.has(e);
+            return (
+              <button
+                key={e}
+                type="button"
+                onClick={() => {
+                  const s = new Set(experience);
+                  if (active) s.delete(e);
+                  else s.add(e);
+                  setExperience(s);
+                }}
+                className={cn(
+                  "rounded-lg border py-2.5 text-sm font-medium transition sm:py-1.5 sm:text-[11px]",
+                  active
+                    ? "border-brand-600 bg-brand-600 text-white"
+                    : "border-slate-200 text-slate-700 hover:border-slate-300"
+                )}
+              >
+                {e}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Industry</h3>
+        <Select
+          className="mt-3"
+          value={industry}
+          onChange={(e) => setIndustry(e.target.value)}
+          options={[
+            { value: "", label: "Any industry" },
+            ...industries.map((i) => ({ value: i, label: i })),
+          ]}
+        />
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">
+          Minimum salary (AED): {minSalary.toLocaleString()}
+        </h3>
+        <input
+          type="range"
+          min={0}
+          max={80000}
+          step={1000}
+          value={minSalary}
+          onChange={(e) => setMinSalary(+e.target.value)}
+          className="mt-3 w-full accent-brand-600"
+        />
+      </div>
+
+      <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={remoteOnly}
+          onChange={(e) => setRemoteOnly(e.target.checked)}
+          className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+        />
+        Remote only
+      </label>
+
+      <div className="rounded-2xl bg-gradient-to-br from-brand-50 to-accent-50 p-5">
+        <Briefcase className="h-6 w-6 text-brand-700" />
+        <h3 className="mt-3 text-sm font-bold text-slate-900">Build your CV</h3>
+        <p className="mt-1 text-xs text-slate-600">
+          AI-assisted CV builder with UAE-specific templates. Export to PDF.
+        </p>
+        <Link to="/resume">
+          <Button size="sm" className="mt-3 w-full">
+            Try the builder
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function JobsList() {
   const { items: jobs, loading, error, live } = useJobs();
   const [q, setQ] = useState("");
@@ -28,6 +168,7 @@ export function JobsList() {
   const [experience, setExperience] = useState<Set<ExperienceLevel>>(new Set());
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [minSalary, setMinSalary] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return jobs.filter((j) => {
@@ -45,19 +186,40 @@ export function JobsList() {
 
   const industries = Array.from(new Set(jobs.map((j) => j.industry)));
 
+  const filterProps = {
+    employment,
+    setEmployment,
+    experience,
+    setExperience,
+    industry,
+    setIndustry,
+    industries,
+    minSalary,
+    setMinSalary,
+    remoteOnly,
+    setRemoteOnly,
+  };
+
+  const activeFilterCount =
+    employment.size +
+    experience.size +
+    (industry ? 1 : 0) +
+    (remoteOnly ? 1 : 0) +
+    (minSalary > 0 ? 1 : 0);
+
   return (
-    <div className="bg-slate-50/60 pb-20 pt-8">
+    <div className="bg-slate-50/60 pb-20 pt-6 sm:pt-8">
       <div className="container">
         <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Jobs in the UAE</h1>
-            <p className="mt-2 text-slate-600">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-4xl">Jobs in the UAE</h1>
+            <p className="mt-2 text-sm text-slate-600 sm:text-base">
               {filtered.length} open roles · AI-matched to your profile
             </p>
             <CatalogStatus loading={loading} error={error} live={live} />
           </div>
-          <Link to="/post?mode=job">
-            <Button variant="outline">
+          <Link to="/post?mode=job" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Building className="h-4 w-4" /> Post a job (Business)
             </Button>
           </Link>
@@ -66,20 +228,20 @@ export function JobsList() {
         <div className="mt-6 rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3">
-              <Search className="h-4 w-4 text-slate-400" />
+              <Search className="h-4 w-4 shrink-0 text-slate-400" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Job title, company, or keyword"
-                className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-slate-400 sm:text-sm"
               />
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 sm:border-l sm:border-slate-200">
-              <MapPin className="h-4 w-4 text-slate-400" />
+              <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
               <select
                 value={emirate}
                 onChange={(e) => setEmirate(e.target.value)}
-                className="h-11 flex-1 bg-transparent text-sm outline-none"
+                className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none sm:text-sm"
               >
                 <option value="">All UAE</option>
                 <option>Dubai</option>
@@ -88,116 +250,25 @@ export function JobsList() {
                 <option>Ajman</option>
               </select>
             </div>
-            <Button>Find jobs</Button>
+            <Button
+              variant="outline"
+              className="lg:hidden"
+              onClick={() => setDrawerOpen(true)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="ml-1 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
           </div>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[280px_1fr]">
-          <aside className="space-y-6 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm h-fit">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Employment type</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {EMPLOYMENT.map((e) => {
-                  const active = employment.has(e);
-                  return (
-                    <button
-                      key={e}
-                      onClick={() => {
-                        const s = new Set(employment);
-                        if (active) s.delete(e);
-                        else s.add(e);
-                        setEmployment(s);
-                      }}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                        active
-                          ? "border-brand-600 bg-brand-600 text-white"
-                          : "border-slate-200 text-slate-700 hover:border-slate-300"
-                      )}
-                    >
-                      {e}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Experience</h3>
-              <div className="mt-3 grid grid-cols-5 gap-1.5">
-                {EXPERIENCE.map((e) => {
-                  const active = experience.has(e);
-                  return (
-                    <button
-                      key={e}
-                      onClick={() => {
-                        const s = new Set(experience);
-                        if (active) s.delete(e);
-                        else s.add(e);
-                        setExperience(s);
-                      }}
-                      className={cn(
-                        "rounded-lg border py-1.5 text-[11px] font-medium transition",
-                        active
-                          ? "border-brand-600 bg-brand-600 text-white"
-                          : "border-slate-200 text-slate-700 hover:border-slate-300"
-                      )}
-                    >
-                      {e}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Industry</h3>
-              <Select
-                className="mt-3"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                options={[
-                  { value: "", label: "Any industry" },
-                  ...industries.map((i) => ({ value: i, label: i })),
-                ]}
-              />
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">
-                Minimum salary (AED): {minSalary.toLocaleString()}
-              </h3>
-              <input
-                type="range"
-                min={0}
-                max={80000}
-                step={1000}
-                value={minSalary}
-                onChange={(e) => setMinSalary(+e.target.value)}
-                className="mt-3 w-full accent-brand-600"
-              />
-            </div>
-
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={remoteOnly}
-                onChange={(e) => setRemoteOnly(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-              />
-              Remote only
-            </label>
-
-            <div className="rounded-2xl bg-gradient-to-br from-brand-50 to-accent-50 p-5">
-              <Briefcase className="h-6 w-6 text-brand-700" />
-              <h3 className="mt-3 text-sm font-bold text-slate-900">Build your CV</h3>
-              <p className="mt-1 text-xs text-slate-600">
-                AI-assisted CV builder with UAE-specific templates. Export to PDF.
-              </p>
-              <Button size="sm" className="mt-3 w-full">
-                Try the builder
-              </Button>
-            </div>
+          <aside className="hidden h-fit space-y-6 rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm lg:block">
+            <JobFilterPanel {...filterProps} />
           </aside>
 
           <div>
@@ -207,7 +278,7 @@ export function JobsList() {
               </Badge>
             </div>
             {filtered.length === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center">
+              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center sm:p-12">
                 <p className="font-semibold text-slate-700">No jobs match these filters.</p>
               </div>
             ) : (
@@ -220,6 +291,15 @@ export function JobsList() {
           </div>
         </div>
       </div>
+
+      <MobileFilterDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="Job filters"
+        actionLabel={`Show ${filtered.length} jobs`}
+      >
+        <JobFilterPanel {...filterProps} />
+      </MobileFilterDrawer>
     </div>
   );
 }

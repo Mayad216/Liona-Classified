@@ -4,6 +4,7 @@ namespace App\Services\Matchmaking;
 
 use App\Models\RoommateProfile;
 use App\Models\User;
+use App\Services\Copilot\EmbeddingService;
 use Illuminate\Support\Collection;
 
 /**
@@ -22,10 +23,32 @@ class MatchmakingEngine
     /** @var array<string, mixed> */
     protected array $tuning;
 
-    public function __construct()
+    /** @var array<string, mixed> */
+    protected array $semantic;
+
+    /**
+     * Bio vectors memoised per request so the seeker is embedded once rather
+     * than once per candidate.
+     *
+     * @var array<string, list<float>|null>
+     */
+    protected array $vectorCache = [];
+
+    /** Embedding API calls made so far this request. */
+    protected int $liveCalls = 0;
+
+    /**
+     * Set once a live embedding call fails. An expired key, exhausted credits
+     * or an outage will reject every subsequent call identically, so one
+     * failure is enough to stop retrying for the rest of the request.
+     */
+    protected bool $embedUnavailable = false;
+
+    public function __construct(protected EmbeddingService $embeddings)
     {
         $this->dimensions = config('matchmaking.dimensions', []);
         $this->tuning = config('matchmaking.tuning', []);
+        $this->semantic = config('matchmaking.semantic', []);
     }
 
     /**
@@ -76,6 +99,7 @@ class MatchmakingEngine
                 'candidate' => $this->serializeCandidate($candidate),
                 'score' => 0,
                 'raw' => 0,
+                'category_scores' => [],
                 'breakdown' => $genderDim ? [[
                     'key' => $genderDim['key'],
                     'label' => $genderDim['label'],
@@ -84,6 +108,8 @@ class MatchmakingEngine
                     'weight' => (float) $genderDim['weight'],
                     'explanation' => $genderScore['explanation'],
                     'contributed' => true,
+                    'is_dealbreaker' => in_array($genderDim['key'], $this->dealbreakerKeys($seeker), true),
+                    'open_match' => false,
                 ]] : [],
                 'excluded' => true,
                 'excluded_reason' => $this->genderFilterFailureReason($seeker, $candidate),
@@ -102,6 +128,7 @@ class MatchmakingEngine
                 'candidate' => $this->serializeCandidate($candidate),
                 'score' => 0,
                 'raw' => 0,
+                'category_scores' => [],
                 'breakdown' => $locationDim ? [[
                     'key' => $locationDim['key'],
                     'label' => $locationDim['label'],
@@ -110,6 +137,8 @@ class MatchmakingEngine
                     'weight' => (float) $locationDim['weight'],
                     'explanation' => $locationScore['explanation'],
                     'contributed' => true,
+                    'is_dealbreaker' => in_array($locationDim['key'], $this->dealbreakerKeys($seeker), true),
+                    'open_match' => false,
                 ]] : [],
                 'excluded' => true,
                 'excluded_reason' => $this->locationFilterFailureReason($seeker, $candidate),
@@ -119,6 +148,7 @@ class MatchmakingEngine
         }
 
         $hard = $this->checkHardFilters($seeker, $candidate);
+        $dealbreakerKeys = $this->dealbreakerKeys($seeker);
 
         $breakdown = [];
         foreach ($this->dimensions as $dim) {
@@ -142,13 +172,22 @@ class MatchmakingEngine
                 'candidate' => $this->serializeCandidate($candidate),
                 'score' => 0,
                 'raw' => 0,
-                'breakdown' => $breakdown,
+                'category_scores' => [],
+                'breakdown' => $this->decorateBreakdown($breakdown, $seeker, $candidate, $dealbreakerKeys),
                 'excluded' => true,
                 'excluded_reason' => $hard['reason'],
                 'highlights' => [],
                 'concerns' => [],
             ];
         }
+
+        // Embed only after every hard filter has cleared — otherwise each
+        // rejected candidate costs an OpenAI call for a score nobody reads.
+        if ($semantic = $this->scoreSemanticAffinity($seeker, $candidate)) {
+            $breakdown[] = $semantic;
+        }
+
+        $breakdown = $this->decorateBreakdown($breakdown, $seeker, $candidate, $dealbreakerKeys);
 
         $contributing = array_values(array_filter($breakdown, fn ($d) => $d['contributed']));
         $totalWeight = array_sum(array_column($contributing, 'weight')) ?: 1;
@@ -193,15 +232,341 @@ class MatchmakingEngine
             3
         );
 
+        $score = (int) round($raw * 100);
+        $categoryScores = $this->aggregateCategoryScores($breakdown, $seeker, $candidate);
+
+        $clashes = $this->dealbreakerClashes($seeker, $candidate, $dealbreakerKeys);
+        if ($clashes !== []) {
+            $warnings = array_map(fn ($c) => "{$c['label']}: {$c['explanation']}", $clashes);
+
+            // A strong overall fit survives a single deal-breaker clash, but the
+            // warning still rides along so the UI can surface it.
+            if ($score >= (int) ($this->tuning['dealbreaker_override_min_score'] ?? 85)) {
+                return [
+                    'candidate' => $this->serializeCandidate($candidate),
+                    'score' => $score,
+                    'raw' => $raw,
+                    'category_scores' => $categoryScores,
+                    'breakdown' => $breakdown,
+                    'excluded' => false,
+                    'dealbreaker_clash' => true,
+                    'dealbreaker_warnings' => $warnings,
+                    'highlights' => $highlights,
+                    'concerns' => array_slice([
+                        ...array_map(fn ($c) => [
+                            'key' => $c['key'],
+                            'label' => $c['label'],
+                            'category' => $c['category'],
+                            'score' => 0.0,
+                            'weight' => 1.0,
+                            'explanation' => $c['explanation'],
+                            'contributed' => true,
+                            'is_dealbreaker' => true,
+                            'open_match' => false,
+                        ], $clashes),
+                        ...$concerns,
+                    ], 0, 3),
+                ];
+            }
+
+            return [
+                'candidate' => $this->serializeCandidate($candidate),
+                'score' => 0,
+                'raw' => 0,
+                'category_scores' => $categoryScores,
+                'breakdown' => $breakdown,
+                'excluded' => true,
+                'excluded_reason' => 'Deal-breaker: '.$warnings[0],
+                'dealbreaker_warnings' => $warnings,
+                'highlights' => [],
+                'concerns' => [],
+            ];
+        }
+
         return [
             'candidate' => $this->serializeCandidate($candidate),
-            'score' => (int) round($raw * 100),
+            'score' => $score,
             'raw' => $raw,
+            'category_scores' => $categoryScores,
             'breakdown' => $breakdown,
             'excluded' => false,
             'highlights' => $highlights,
             'concerns' => $concerns,
         ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Semantic (embedding) dimension
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Cosine similarity between the two free-text bios.
+     *
+     * Returns null rather than a neutral score whenever the signal is
+     * unavailable, so the dimension drops out of the weighted average and
+     * scores stay byte-identical to the pre-embedding behaviour.
+     */
+    protected function scoreSemanticAffinity(RoommateProfile $seeker, RoommateProfile $candidate): ?array
+    {
+        if (empty($this->semantic['enabled']) || ! $this->embeddings->enabled()) {
+            return null;
+        }
+
+        $seekerText = $this->semanticText($seeker);
+        $candidateText = $this->semanticText($candidate);
+        $minChars = (int) ($this->semantic['min_chars'] ?? 40);
+
+        if (mb_strlen($seekerText) < $minChars || mb_strlen($candidateText) < $minChars) {
+            return null;
+        }
+
+        $seekerVector = $this->semanticVector($seeker, $seekerText);
+        $candidateVector = $this->semanticVector($candidate, $candidateText);
+
+        if (! $seekerVector || ! $candidateVector) {
+            return null;
+        }
+
+        $similarity = $this->embeddings->cosineSimilarity($seekerVector, $candidateVector);
+        $floor = (float) ($this->semantic['floor'] ?? 0.62);
+        $score = $floor < 1.0 ? ($similarity - $floor) / (1.0 - $floor) : $similarity;
+
+        return [
+            'key' => $this->semantic['key'] ?? 'bio_affinity',
+            'label' => $this->semantic['label'] ?? 'Lifestyle description',
+            'category' => $this->semantic['category'] ?? 'lifestyle',
+            'score' => max(0.0, min(1.0, $score)),
+            'weight' => (float) ($this->semantic['weight'] ?? 0.45),
+            'explanation' => $this->explainSemantic(max(0.0, min(1.0, $score))),
+            'contributed' => true,
+            'semantic' => true,
+        ];
+    }
+
+    protected function semanticText(RoommateProfile $profile): string
+    {
+        return trim(implode("\n", array_filter([
+            trim((string) $profile->bio),
+            trim((string) $profile->occupation),
+        ])));
+    }
+
+    /** @return list<float>|null */
+    protected function semanticVector(RoommateProfile $profile, string $text): ?array
+    {
+        $cacheKey = $profile->getKey().':'.hash('sha256', $text);
+        if (array_key_exists($cacheKey, $this->vectorCache)) {
+            return $this->vectorCache[$cacheKey];
+        }
+
+        $vector = $this->embeddings->cachedVector($profile, $text);
+
+        // Reach for the API only while the per-request budget holds. Ranking a
+        // cold candidate list would otherwise fire one HTTP call per candidate
+        // and blow the request timeout. Anything skipped here simply loses the
+        // dimension for now and gets picked up once its vector is warm.
+        if (
+            ! $vector
+            && ! $this->embedUnavailable
+            && $this->liveCalls < (int) ($this->semantic['max_live_calls'] ?? 10)
+        ) {
+            $this->liveCalls++;
+            $vector = $this->embeddings->embedModel($profile, $text)?->vector;
+            if (! $vector) {
+                $this->embedUnavailable = true;
+            }
+        }
+
+        return $this->vectorCache[$cacheKey] = $vector;
+    }
+
+    protected function explainSemantic(float $score): string
+    {
+        return match (true) {
+            $score >= 0.75 => 'Your descriptions of day-to-day life line up closely',
+            $score >= 0.45 => 'Some common ground in how you describe yourselves',
+            default => 'You describe quite different lifestyles',
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Deal-breakers, open preferences, category rollup
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** @return list<string> */
+    protected function dealbreakerKeys(RoommateProfile $seeker): array
+    {
+        return array_values(array_filter(
+            (array) ($seeker->dealbreakers ?? []),
+            fn ($k) => is_string($k) && $k !== ''
+        ));
+    }
+
+    /**
+     * @param  list<string>  $dealbreakerKeys
+     * @return list<array{key: string, label: string, category: string, explanation: string}>
+     */
+    protected function dealbreakerClashes(
+        RoommateProfile $seeker,
+        RoommateProfile $candidate,
+        array $dealbreakerKeys
+    ): array {
+        $threshold = (float) ($this->tuning['dealbreaker_threshold'] ?? 0.5);
+        $clashes = [];
+
+        foreach ($dealbreakerKeys as $key) {
+            $dim = collect($this->dimensions)->firstWhere('key', $key);
+            if (! $dim) {
+                continue;
+            }
+
+            $scored = match ($key) {
+                'gender_preference' => $this->scoreGenderCompatibility($seeker, $candidate, $dim),
+                'preferred_locations' => $this->scoreLocationCompatibility($seeker, $candidate, $dim),
+                default => $this->scoreDimension(
+                    $dim,
+                    ($seeker->looking_for ?? [])[$key] ?? null,
+                    ($candidate->preferences ?? [])[$key] ?? null
+                ),
+            };
+
+            if (! $scored['contributed'] || $scored['score'] >= $threshold) {
+                continue;
+            }
+
+            $clashes[] = [
+                'key' => $key,
+                'label' => $dim['label'],
+                'category' => $dim['category'],
+                'explanation' => $scored['explanation'],
+            ];
+        }
+
+        return $clashes;
+    }
+
+    /** Open-ended enum answers ("Any", "Any pets", diet "No restrictions") fit anyone. */
+    protected function isOpenPreference(mixed $value, array $dim): bool
+    {
+        if ($value === null || ($dim['type']['kind'] ?? null) !== 'enum' || ! is_scalar($value)) {
+            return false;
+        }
+
+        $str = trim((string) $value);
+
+        return (bool) preg_match('/^any($|\s)/i', $str)
+            || (($dim['key'] ?? null) === 'diet' && preg_match('/^no restrictions?$/i', $str));
+    }
+
+    /**
+     * Annotate each dimension with the deal-breaker and open-match flags the
+     * UI renders. Kept separate from scoring so the comparators stay pure.
+     *
+     * @param  list<array<string, mixed>>  $breakdown
+     * @param  list<string>  $dealbreakerKeys
+     * @return list<array<string, mixed>>
+     */
+    protected function decorateBreakdown(
+        array $breakdown,
+        RoommateProfile $seeker,
+        RoommateProfile $candidate,
+        array $dealbreakerKeys
+    ): array {
+        return array_map(function (array $d) use ($seeker, $candidate, $dealbreakerKeys) {
+            $dim = collect($this->dimensions)->firstWhere('key', $d['key']);
+
+            $open = false;
+            if ($d['contributed'] && $dim) {
+                $open = match ($d['key']) {
+                    'gender_preference' => $this->resolveGenderPreference($seeker) === 'Any',
+                    'preferred_locations' => $this->resolveSearchLocations($seeker) === []
+                        || $this->resolveDesiredLocations($candidate) === [],
+                    default => $this->isOpenPreference(($seeker->looking_for ?? [])[$d['key']] ?? null, $dim)
+                        || $this->isOpenPreference(($candidate->preferences ?? [])[$d['key']] ?? null, $dim),
+                };
+            }
+
+            return [
+                ...$d,
+                'is_dealbreaker' => in_array($d['key'], $dealbreakerKeys, true),
+                'open_match' => $open,
+            ];
+        }, $breakdown);
+    }
+
+    /**
+     * Mirrors `aggregateCategoryScores` in engine.ts, including its quirk that
+     * category openness is read straight off the profiles rather than off the
+     * breakdown — so an unanswered "Any" still opens the category.
+     *
+     * @param  list<array<string, mixed>>  $breakdown
+     * @return list<array{key: string, label: string, value: float, open_match: bool}>
+     */
+    protected function aggregateCategoryScores(
+        array $breakdown,
+        RoommateProfile $seeker,
+        RoommateProfile $candidate
+    ): array {
+        $byCategory = [];
+        foreach ($breakdown as $d) {
+            $byCategory[$d['category']][] = $d;
+        }
+
+        $out = [];
+        foreach (config('matchmaking.categories', []) as $key => $meta) {
+            $dims = $byCategory[$key] ?? [];
+            if ($dims === []) {
+                continue;
+            }
+
+            $label = $meta['label'] ?? $key;
+
+            if ($this->categoryHasOpenPreference($key, $seeker, $candidate)) {
+                $out[] = ['key' => $key, 'label' => $label, 'value' => 1.0, 'open_match' => true];
+                continue;
+            }
+
+            $contributing = array_values(array_filter($dims, fn ($d) => $d['contributed']));
+            $totalWeight = array_sum(array_column($contributing, 'weight'));
+            $value = $totalWeight > 0
+                ? array_sum(array_map(fn ($d) => $d['score'] * $d['weight'], $contributing)) / $totalWeight
+                : 0.5;
+
+            $out[] = [
+                'key' => $key,
+                'label' => $label,
+                'value' => max(0.0, min(1.0, $value)),
+                'open_match' => false,
+            ];
+        }
+
+        return $out;
+    }
+
+    protected function categoryHasOpenPreference(
+        string $category,
+        RoommateProfile $seeker,
+        RoommateProfile $candidate
+    ): bool {
+        foreach ($this->dimensions as $dim) {
+            if (($dim['category'] ?? null) !== $category) {
+                continue;
+            }
+
+            $matched = match ($dim['key'] ?? null) {
+                'gender_preference' => $this->resolveGenderPreference($seeker) === 'Any',
+                'preferred_locations' => $this->resolveSearchLocations($seeker) === []
+                    || $this->resolveDesiredLocations($candidate) === [],
+                default => $this->isOpenPreference(($seeker->looking_for ?? [])[$dim['key']] ?? null, $dim)
+                    || $this->isOpenPreference(($candidate->preferences ?? [])[$dim['key']] ?? null, $dim),
+            };
+
+            if ($matched) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -223,6 +588,9 @@ class MatchmakingEngine
         if ($a === null || $b === null) {
             return [...$base, 'score' => 0.5, 'explanation' => 'One side missing', 'contributed' => false];
         }
+        if ($this->isWithheldAnswer($a) || $this->isWithheldAnswer($b)) {
+            return [...$base, 'score' => 0.5, 'explanation' => 'Not shared', 'contributed' => false];
+        }
 
         $rule = $dim['rule'] ?? $this->defaultRuleForType($dim['type']);
 
@@ -243,6 +611,11 @@ class MatchmakingEngine
         ];
     }
 
+    protected function isWithheldAnswer(mixed $value): bool
+    {
+        return is_string($value) && preg_match('/^prefer not to say$/i', trim($value)) === 1;
+    }
+
     protected function defaultRuleForType(array $type): string
     {
         return match ($type['kind'] ?? 'enum') {
@@ -260,12 +633,7 @@ class MatchmakingEngine
         if ($a === $b) {
             return 1.0;
         }
-        $opts = $dim['type']['options'] ?? [];
-        if (
-            ($dim['type']['kind'] ?? null) === 'enum' &&
-            in_array('Any', $opts, true) &&
-            ($a === 'Any' || $b === 'Any')
-        ) {
+        if ($this->isOpenPreference($a, $dim) || $this->isOpenPreference($b, $dim)) {
             return 1.0;
         }
         if (($dim['rule'] ?? null) === 'matrix' && isset($dim['matrix'])) {
@@ -373,12 +741,7 @@ class MatchmakingEngine
             if ($a === null || $b === null) {
                 continue;
             }
-            $opts = $dim['type']['options'] ?? [];
-            if (
-                ($dim['type']['kind'] ?? null) === 'enum' &&
-                in_array('Any', $opts, true) &&
-                ($a === 'Any' || $b === 'Any')
-            ) {
+            if ($this->isOpenPreference($a, $dim) || $this->isOpenPreference($b, $dim)) {
                 continue;
             }
             if ($a !== $b) {
@@ -869,6 +1232,12 @@ class MatchmakingEngine
             'occupation' => $p->occupation,
             'bio' => $p->bio,
             'preferences' => $p->preferences ?? [],
+            'looking_for' => $p->looking_for ?? [],
+            'monthly_budget_aed' => $p->monthly_budget_aed,
+            'move_in_date' => $p->move_in_date?->format('Y-m-d'),
+            'lease_duration' => $p->lease_duration,
+            'is_verified' => (bool) ($u?->is_verified),
+            'is_discoverable' => (bool) $p->is_discoverable,
             'listing_id' => $p->listing_id ? (string) $p->listing_id : null,
         ];
     }

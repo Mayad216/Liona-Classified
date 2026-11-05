@@ -62,6 +62,8 @@ export class ApiError extends Error {
   }
 }
 
+export { formatApiError, sanitizeErrorMessage } from "@/lib/apiErrors";
+
 export const api = {
   // ---------- Auth ----------
   login: (email: string, password: string) =>
@@ -688,6 +690,21 @@ export const api = {
       { token }
     );
   },
+
+  roommateMatchSearch: (
+    payload: {
+      looking_for?: Record<string, unknown>;
+      dealbreakers?: string[];
+      min_score?: number;
+      limit?: number;
+    },
+    token: string
+  ) =>
+    request<{ data: unknown[] }>("/roommate-matches/search", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      token,
+    }),
 
   roommateMatchPair: (userId: string, token: string) =>
     request<{ data: unknown }>(`/roommate-matches/${userId}`, { token }),

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Copy, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { formatApiError } from "@/lib/api";
 import {
   copilotExplainMatch,
   copilotExtractKeywords,
@@ -50,7 +51,7 @@ export function CopilotJobAiPanel({ match, onUsageUpdate }: Props) {
       }
       setOpen(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "AI request failed");
+      setError(formatApiError(e, "AI request failed"));
     } finally {
       setLoading(null);
     }

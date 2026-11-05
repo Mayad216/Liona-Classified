@@ -4,6 +4,7 @@ import { Check, ChevronDown, ChevronUp, ExternalLink, Loader2, X } from "lucide-
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { api, getApiBaseUrl, getStoredAuthToken } from "@/lib/api";
+import { sanitizeErrorMessage } from "@/lib/apiErrors";
 import type { CopilotApplication, CopilotAutomationLogEntry } from "@/types/copilot";
 
 const STATUS_TONE: Record<string, "success" | "warning" | "default" | "outline"> = {
@@ -231,7 +232,7 @@ export function CopilotApplicationsPage() {
 
             {app.error_message && (
               <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-                {app.error_message}
+                {sanitizeErrorMessage(app.error_message)}
               </p>
             )}
 

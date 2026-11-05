@@ -336,8 +336,10 @@ TXT;
         $response = Http::withToken($key)
             ->timeout(45)
             ->post('https://api.openai.com/v1/chat/completions', [
-                'model' => config('resume.openai_model', 'gpt-4o-mini'),
+                'model' => config('resume.openai_model', 'gpt-6-luna'),
                 'temperature' => 0.35,
+                // Required for `temperature` to be accepted on GPT-6 models.
+                'reasoning_effort' => 'none',
                 'response_format' => $json ? ['type' => 'json_object'] : null,
                 'messages' => [
                     ['role' => 'system', 'content' => self::SYSTEM],

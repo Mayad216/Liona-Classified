@@ -75,13 +75,13 @@ export const mockListings: Listing[] = [
   },
   {
     id: "L-1025",
-    title: "Cozy Partition Room — Bur Dubai, Bachelors Only",
+    title: "Cozy Room with Partition — Bur Dubai, Bachelors Only",
     description:
-      "Spacious wooden partition in a 2-bedroom flat. Walking distance to Al Fahidi metro. All bills included. Quiet, family-friendly building.",
+      "Spacious room with partition in a 2-bedroom flat. Walking distance to Al Fahidi metro. All bills included. Quiet, family-friendly building.",
     emirate: "Dubai",
     area: "Bur Dubai",
     price: 1600,
-    roomType: "Partition",
+    roomType: "Room with Partition",
     photos: [
       u("photo-1502672260266-1c1ef2d93688"),
       u("photo-1484101403633-562f891dc89a"),

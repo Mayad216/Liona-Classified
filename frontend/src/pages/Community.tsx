@@ -20,10 +20,12 @@ import { Badge } from "@/components/ui/Badge";
 import {
   api,
   ApiError,
+  formatApiError,
   getStoredAuthToken,
   type CommunityEventRow,
   type CommunityTopicRow,
 } from "@/lib/api";
+import { isLiveApi } from "@/lib/apiMode";
 
 const FALLBACK_TOPICS: CommunityTopicRow[] = [
   {
@@ -108,12 +110,16 @@ export function Community() {
         setEvents(eRes.data);
         setLiveData(true);
         setLoadError(null);
-      } catch {
+      } catch (err) {
         if (cancelled) return;
         setTopics(FALLBACK_TOPICS);
         setEvents(FALLBACK_EVENTS);
         setLiveData(false);
-        setLoadError("Showing offline preview — start Laravel on :8000 for live community data.");
+        setLoadError(
+          isLiveApi()
+            ? formatApiError(err, "Could not load community data.")
+            : "Showing offline preview — start Laravel on :8000 for live community data."
+        );
       }
     })();
     return () => {
@@ -146,7 +152,7 @@ export function Community() {
       if (e instanceof ApiError && e.status === 401) {
         setBanner("Session expired — sign in again to post.");
       } else {
-        setBanner("Could not create topic. Try again when the API is running.");
+        setBanner(formatApiError(e, "Could not create topic. Try again."));
       }
     } finally {
       setTopicSubmitting(false);
@@ -177,7 +183,7 @@ export function Community() {
       } else if (e instanceof ApiError && e.status === 422) {
         setBanner("That event is full.");
       } else {
-        setBanner("RSVP failed — check your connection or try again.");
+        setBanner(formatApiError(e, "RSVP failed — check your connection or try again."));
       }
     } finally {
       setRsvpBusyId(null);

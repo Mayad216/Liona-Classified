@@ -202,7 +202,7 @@ function AIMatchBanner() {
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 lg:gap-4">
+          <div className="grid w-full grid-cols-3 gap-2 sm:gap-3 lg:w-auto lg:gap-4">
             {[
               { v: "94%", l: "avg match" },
               { v: "12", l: "dimensions" },
@@ -210,9 +210,9 @@ function AIMatchBanner() {
             ].map((s) => (
               <div
                 key={s.l}
-                className="rounded-2xl bg-white/10 px-5 py-4 text-center text-white backdrop-blur-sm"
+                className="rounded-2xl bg-white/10 px-4 py-3 text-center text-white backdrop-blur-sm sm:px-5 sm:py-4"
               >
-                <div className="text-2xl font-black tracking-tight">{s.v}</div>
+                <div className="text-xl font-black tracking-tight sm:text-2xl">{s.v}</div>
                 <div className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-brand-200">
                   {s.l}
                 </div>
@@ -318,7 +318,7 @@ const categories = [
     to: "/accommodation",
     icon: Building2,
     title: "Accommodation",
-    sub: "Rooms, partitions, studios & apartments",
+    sub: "Rooms with partitions, studios & apartments",
     count: "12,400+ listings",
     gradient: "from-brand-500 to-brand-700",
   },

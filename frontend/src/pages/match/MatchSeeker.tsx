@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DIMENSIONS, ENGINE_TUNING } from "@/lib/matchmaking/config";
 import { getMatchDemoMode, isMatchDemoMode } from "@/lib/matchmaking/matchDemoMode";
-import { topMatches } from "@/lib/matchmaking/engine";
+import { useRoommateMatches } from "@/lib/matchmaking/useRoommateMatches";
 import { mockCandidates } from "@/lib/matchmaking/mockProfiles";
 import { buildScoringProfile } from "@/lib/matchmaking/searchPresets";
 import { useMatchProfile } from "@/lib/matchmaking/useMatchProfile";
@@ -155,10 +155,9 @@ function MatchBrowseResults() {
     [profile, activeSearchPreset, minScore]
   );
 
-  const results = useMemo(
-    () => topMatches(scoringProfile, discoverableCandidates, { minScore }),
-    [scoringProfile, discoverableCandidates, minScore]
-  );
+  const { results } = useRoommateMatches(scoringProfile, discoverableCandidates, {
+    minScore,
+  });
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-slate-50/60 pb-20 pt-6">

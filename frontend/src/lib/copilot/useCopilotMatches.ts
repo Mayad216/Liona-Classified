@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, getStoredAuthToken } from "@/lib/api";
+import { api, getStoredAuthToken, formatApiError } from "@/lib/api";
 import type { CopilotJobMatch } from "@/types/copilot";
 
 type Paginated<T> = {
@@ -33,7 +33,7 @@ export function useCopilotMatches(
       const paginated = res as Paginated<CopilotJobMatch>;
       setItems(paginated.data ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load matches");
+      setError(formatApiError(e, "Could not load matches"));
       setItems([]);
     } finally {
       setLoading(false);

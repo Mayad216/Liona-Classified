@@ -1,3 +1,4 @@
+import type { BookingFor, BookingRelationship } from "@/lib/services/serviceBooking";
 import type { Emirate } from "@/types";
 
 export type VehicleSizeId = "compact" | "pickup" | "truck_3t" | "truck_7t";
@@ -46,6 +47,13 @@ export interface PickupBooking {
   scheduleLabel: string;
   contactPhone: string;
   notes: string;
+  /** Booker confirmation — optional so bookings saved before this existed still load. */
+  bookingFor?: BookingFor;
+  bookerName?: string;
+  bookerEmail?: string;
+  recipientName?: string;
+  recipientRelationship?: BookingRelationship;
+  recipientDetail?: string;
   fare: PickupFareEstimate;
   status: PickupBookingStatus;
   driverName?: string;

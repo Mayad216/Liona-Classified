@@ -105,17 +105,75 @@ class RoommateMatchController extends Controller
             ], 422);
         }
 
-        $candidates = RoommateProfile::with('user:id,name,avatar,is_verified')
-            ->where('user_id', '!=', $request->user()->id)
-            ->where('is_discoverable', true)
-            ->get();
-
         $minScore = $request->integer('min_score', config('matchmaking.tuning.min_display_score', 55));
         $limit = $request->integer('limit', 20);
 
-        $results = $this->engine->topMatches($seeker, $candidates, $minScore, $limit);
+        $results = $this->engine->topMatches(
+            $seeker,
+            $this->discoverableCandidates($request),
+            $minScore,
+            $limit
+        );
 
         return response()->json(['data' => $results]);
+    }
+
+    /**
+     * POST /api/v1/roommate-matches/search — rank against ad-hoc criteria.
+     *
+     * Saved search presets live client-side, so the active preset has to travel
+     * with the request. Without it the server would always score against
+     * whatever `looking_for` happened to be persisted last, and switching
+     * presets in the UI would silently do nothing.
+     */
+    public function search(Request $request)
+    {
+        if ($blocked = $this->ensureEmiratesIdVerified($request)) {
+            return $blocked;
+        }
+
+        $data = $request->validate([
+            'looking_for' => ['nullable', 'array'],
+            'dealbreakers' => ['nullable', 'array'],
+            'dealbreakers.*' => ['string', 'max:64'],
+            'min_score' => ['nullable', 'integer', 'between:0,100'],
+            'limit' => ['nullable', 'integer', 'between:1,100'],
+        ]);
+
+        $seeker = $request->user()->roommateProfile;
+        if (! $seeker) {
+            return response()->json([
+                'message' => 'Complete your roommate profile first.',
+            ], 422);
+        }
+
+        // Clone rather than replicate: this must not persist, but it still needs
+        // the primary key so cached bio embeddings resolve.
+        $seeker = clone $seeker;
+        if (is_array($data['looking_for'] ?? null)) {
+            $seeker->looking_for = $data['looking_for'];
+        }
+        if (is_array($data['dealbreakers'] ?? null)) {
+            $seeker->dealbreakers = $data['dealbreakers'];
+        }
+
+        $results = $this->engine->topMatches(
+            $seeker,
+            $this->discoverableCandidates($request),
+            $data['min_score'] ?? (int) config('matchmaking.tuning.min_display_score', 55),
+            $data['limit'] ?? 20
+        );
+
+        return response()->json(['data' => $results]);
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Collection<int, RoommateProfile> */
+    protected function discoverableCandidates(Request $request)
+    {
+        return RoommateProfile::with('user:id,name,avatar,is_verified')
+            ->where('user_id', '!=', $request->user()->id)
+            ->where('is_discoverable', true)
+            ->get();
     }
 
     /** GET /api/v1/roommate-matches/{user} — single-pair detail. */

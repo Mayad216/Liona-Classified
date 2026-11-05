@@ -16,6 +16,10 @@ abstract class CopilotAiClient
         $payload = [
             'model' => config('copilot.openai_model'),
             'temperature' => $temperature,
+            // GPT-6 reasons at medium by default, which rejects `temperature`
+            // outright and adds latency we don't want for short copy. 'none'
+            // restores GPT-4o-mini-like behaviour.
+            'reasoning_effort' => 'none',
             'messages' => [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user', 'content' => $user],

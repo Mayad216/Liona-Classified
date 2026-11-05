@@ -9,6 +9,7 @@ import {
   Bookmark,
   MapPin,
 } from "lucide-react";
+import { useDeviceOptional } from "@/lib/device";
 import { useMatchProfile } from "@/lib/matchmaking/useMatchProfile";
 import { relativeNotificationTime } from "@/lib/notifications/store";
 import { useNotifications } from "@/lib/notifications/useNotifications";
@@ -59,7 +60,7 @@ const STATIC_NOTIFS = [
     icon: CheckCircle2,
     iconBg: "bg-slate-100 text-slate-700",
     title: "Your listing was approved",
-    body: "‘Cozy partition — Bur Dubai’ is live.",
+    body: "‘Cozy room with partition — Bur Dubai’ is live.",
     href: "/dashboard",
     time: "3 d ago",
   },
@@ -67,6 +68,7 @@ const STATIC_NOTIFS = [
 
 export function NotificationBell() {
   const { profile } = useMatchProfile();
+  const { isCompact } = useDeviceOptional();
   const { notifications, unreadCount, markAllRead } = useNotifications(profile.userId);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -105,11 +107,11 @@ export function NotificationBell() {
   const unread = unreadCount + (staticRead ? 0 : staticNotifs.filter((n) => n.unread).length);
 
   return (
-    <div ref={ref} className="relative hidden md:block">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 relative"
+        className="inline-flex h-10 w-10 touch-target items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 relative"
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
@@ -120,7 +122,14 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div
+          className={cn(
+            "z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl",
+            isCompact
+              ? "fixed inset-x-3 top-[4.25rem] max-h-[min(70vh,calc(100dvh-6rem))]"
+              : "absolute right-0 top-12 w-[360px]"
+          )}
+        >
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div className="text-sm font-bold text-slate-900">Notifications</div>
             <button
