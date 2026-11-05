@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => response()->json([
@@ -10,13 +9,7 @@ Route::get('/', fn () => response()->json([
 ]));
 
 Route::get('/railway-health.txt', function () {
-    try {
-        if (config('database.default') !== 'sqlite') {
-            DB::connection()->getPdo();
-        }
-
-        return response('ok', 200, ['Content-Type' => 'text/plain']);
-    } catch (Throwable) {
-        return response('database unavailable', 503, ['Content-Type' => 'text/plain']);
-    }
+    // Liveness only. Railway fails the deploy on any non-200, so this must
+    // not depend on MySQL. Use /up if you need a readiness probe.
+    return response('ok', 200, ['Content-Type' => 'text/plain']);
 });
